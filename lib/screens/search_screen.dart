@@ -130,88 +130,41 @@ class _SearchScreenState extends State<SearchScreen> {
 
   // Shows default Spotify-style tiles when search input is empty
   Widget _buildBrowseCategories(AudioProvider audioProvider) {
+    final recentSongs = audioProvider.recentSearchedSongs;
+    
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 16),
-            child: Text(
-              'Browse all categories',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white70,
+          if (recentSongs.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Text(
+                'Recently played',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white70,
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: GridView.builder(
+            ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: _browseCategories.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 1.6,
-              ),
+              itemCount: recentSongs.length,
               itemBuilder: (context, index) {
-                final category = _browseCategories[index];
-                return GestureDetector(
-                  onTap: () {
-                    _searchController.text = category['title'];
-                    _focusNode.unfocus();
-                    audioProvider.search(category['query']);
-                    setState(() {});
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: category['color'].withOpacity(0.85),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: category['color'].withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          bottom: -10,
-                          right: -10,
-                          child: Transform.rotate(
-                            angle: 0.4,
-                            child: Icon(
-                              Icons.music_note,
-                              size: 70,
-                              color: Colors.white.withOpacity(0.25),
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            category['title'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                return TrackTile(
+                  song: recentSongs[index],
+                  contextQueue: recentSongs,
+                  isFromSearch: true, // Playing a recent search counts as from search to bump it
                 );
               },
             ),
-          ),
+            const SizedBox(height: 16),
+          ],
+          
+
           const SizedBox(height: 100), // Bottom padding for player overlay
         ],
       ),
@@ -249,6 +202,7 @@ class _SearchScreenState extends State<SearchScreen> {
         return TrackTile(
           song: song,
           contextQueue: audioProvider.searchResults,
+          isFromSearch: true,
         );
       },
     );

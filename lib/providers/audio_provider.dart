@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../models/song.dart';
+import '../models/playlist.dart';
 import '../services/youtube_service.dart';
 
 class AudioProvider extends ChangeNotifier {
@@ -20,6 +21,8 @@ class AudioProvider extends ChangeNotifier {
   List<Song> _searchResults = [];
   bool _isSearching = false;
   List<Song> _favorites = [];
+  List<Playlist> _playlists = [];
+  List<Song> _recentSearchedSongs = [];
 
   // Playback States
   bool _isPlaying = false;
@@ -42,7 +45,9 @@ class AudioProvider extends ChangeNotifier {
   LoopMode get loopMode => _loopMode;
   double get volume => _player.volume;
   List<Song> get favorites => _favorites;
+  List<Playlist> get playlists => _playlists;
   List<Song> get searchResults => _searchResults;
+  List<Song> get recentSearchedSongs => _recentSearchedSongs;
 
   Stream<PositionData> get positionDataStream =>
       Rx.combineLatest3<Duration, Duration, Duration?, PositionData>(
@@ -55,6 +60,8 @@ class AudioProvider extends ChangeNotifier {
   AudioProvider() {
     _initStreams();
     _loadFavorites();
+    _loadPlaylists();
+    _loadRecentSearchedSongs();
   }
 
   void _initStreams() {
@@ -123,6 +130,147 @@ class AudioProvider extends ChangeNotifier {
     }
     _saveFavorites();
     notifyListeners();
+  }
+
+  // Load playlists from local storage
+  Future<void> _loadPlaylists() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final playlistsJson = prefs.getStringList('playlists') ?? [];
+      _playlists = playlistsJson
+          .map((item) => Playlist.fromJson(json.decode(item) as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      print('Error loading playlists: $e');
+    }
+  }
+
+  // Save playlists to local storage
+  Future<void> _savePlaylists() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final playlistsJson = _playlists
+          .map((playlist) => json.encode(playlist.toJson()))
+          .toList();
+      await prefs.setStringList('playlists', playlistsJson);
+    } catch (e) {
+      print('Error saving playlists: $e');
+    }
+  }
+
+  void createPlaylist(String name) {
+    if (name.trim().isEmpty) return;
+    final newPlaylist = Playlist(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      name: name.trim(),
+      songs: [],
+      createdAt: DateTime.now(),
+    );
+    _playlists.add(newPlaylist);
+    _savePlaylists();
+    notifyListeners();
+  }
+
+  void deletePlaylist(String id) {
+    _playlists.removeWhere((p) => p.id == id);
+    _savePlaylists();
+    notifyListeners();
+  }
+
+  void addSongToPlaylist(String playlistId, Song song) {
+    final index = _playlists.indexWhere((p) => p.id == playlistId);
+    if (index != -1) {
+      // Check if song already exists in the playlist
+      if (!_playlists[index].songs.any((s) => s.id == song.id)) {
+        _playlists[index].songs.add(song);
+        _savePlaylists();
+        notifyListeners();
+      }
+    }
+  }
+
+  void removeSongFromPlaylist(String playlistId, String songId) {
+    final index = _playlists.indexWhere((p) => p.id == playlistId);
+    if (index != -1) {
+      _playlists[index].songs.removeWhere((s) => s.id == songId);
+      _savePlaylists();
+      notifyListeners();
+    }
+  }
+
+  // Load recent searches from local storage
+  Future<void> _loadRecentSearchedSongs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recentJson = prefs.getStringList('recent_searches') ?? [];
+      _recentSearchedSongs = recentJson
+          .map((item) => Song.fromJson(json.decode(item) as Map<String, dynamic>))
+          .toList();
+      notifyListeners();
+    } catch (e) {
+      print('Error loading recent searches: $e');
+    }
+  }
+
+  // Save recent searches to local storage
+  Future<void> _saveRecentSearchedSongs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final recentJson = _recentSearchedSongs
+          .map((song) => json.encode(song.toJson()))
+          .toList();
+      await prefs.setStringList('recent_searches', recentJson);
+    } catch (e) {
+      print('Error saving recent searches: $e');
+    }
+  }
+
+  void addRecentSearchedSong(Song song) {
+    // Remove if exists to place it at the front
+    _recentSearchedSongs.removeWhere((s) => s.id == song.id);
+    _recentSearchedSongs.insert(0, song);
+    
+    // Keep max 4 songs
+    if (_recentSearchedSongs.length > 4) {
+      _recentSearchedSongs = _recentSearchedSongs.sublist(0, 4);
+    }
+    
+    _saveRecentSearchedSongs();
+    notifyListeners();
+  }
+
+  void reorderPlaylistSongs(String playlistId, int oldIndex, int newIndex) {
+    final pIndex = _playlists.indexWhere((p) => p.id == playlistId);
+    if (pIndex != -1) {
+      final playlist = _playlists[pIndex];
+      if (oldIndex < newIndex) {
+        newIndex -= 1;
+      }
+      final song = playlist.songs.removeAt(oldIndex);
+      playlist.songs.insert(newIndex, song);
+      _savePlaylists();
+      
+      // If the current queue matches this playlist, update the queue as well
+      // This ensures "next song" respects the new order
+      if (_queue.length == playlist.songs.length) {
+        bool matches = true;
+        for (var s in _queue) {
+          if (!playlist.songs.any((ps) => ps.id == s.id)) {
+            matches = false;
+            break;
+          }
+        }
+        if (matches) {
+          _queue = List.from(playlist.songs);
+          if (_currentSong != null) {
+            _currentIndex = _queue.indexWhere((s) => s.id == _currentSong!.id);
+          }
+        }
+      }
+      
+      notifyListeners();
+    }
   }
 
   // Playback Control Actions

@@ -2,15 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../providers/audio_provider.dart';
+import '../screens/player_screen.dart';
 
 class TrackTile extends StatelessWidget {
   final Song song;
   final List<Song> contextQueue;
+  final String? playlistId;
+  final bool isFromSearch;
 
   const TrackTile({
     Key? key,
     required this.song,
     required this.contextQueue,
+    this.playlistId,
+    this.isFromSearch = false,
   }) : super(key: key);
 
   @override
@@ -18,6 +23,56 @@ class TrackTile extends StatelessWidget {
     final audioProvider = Provider.of<AudioProvider>(context);
     final isCurrent = audioProvider.currentSong?.id == song.id;
     final isPlaying = isCurrent && audioProvider.isPlaying;
+
+    void _showPlaylistMenu() {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: const Color(0xFF1E1E28),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (ctx) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Add to Playlist', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              if (audioProvider.playlists.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text('No playlists created yet.', style: TextStyle(color: Colors.white54)),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: audioProvider.playlists.length,
+                    itemBuilder: (context, index) {
+                      final playlist = audioProvider.playlists[index];
+                      return ListTile(
+                        leading: const Icon(Icons.queue_music, color: Colors.pinkAccent),
+                        title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          audioProvider.addSongToPlaylist(playlist.id, song);
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Added to ${playlist.name}'),
+                              backgroundColor: Colors.pink,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      );
+    }
 
     final minutes = song.duration.inMinutes;
     final seconds = (song.duration.inSeconds % 60).toString().padLeft(2, '0');
@@ -34,6 +89,37 @@ class TrackTile extends StatelessWidget {
       child: ListTile(
         onTap: () {
           audioProvider.playSong(song, contextQueue: contextQueue);
+          if (isFromSearch) {
+            audioProvider.addRecentSearchedSong(song);
+          }
+          if (playlistId != null) {
+            Navigator.push(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+                  backgroundColor: const Color(0xFF0F0F14),
+                  body: PlayerScreen(
+                    slideValue: 1.0,
+                    onCollapse: () => Navigator.pop(context),
+                    onExpand: () {},
+                  ),
+                ),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  const begin = Offset(0.0, 1.0);
+                  const end = Offset.zero;
+                  const curve = Curves.easeOutQuart;
+
+                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+                  return SlideTransition(
+                    position: animation.drive(tween),
+                    child: child,
+                  );
+                },
+                transitionDuration: const Duration(milliseconds: 350),
+              ),
+            );
+          }
         },
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -113,6 +199,43 @@ class TrackTile extends StatelessWidget {
               ),
               onPressed: () {
                 audioProvider.toggleFavorite(song);
+              },
+            ),
+            // Options Menu (Add to Playlist / Remove from Playlist)
+            IconButton(
+              icon: const Icon(Icons.more_vert, size: 20, color: Colors.white38),
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: const Color(0xFF1E1E28),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                  builder: (ctx) {
+                    return SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.playlist_add, color: Colors.white),
+                            title: const Text('Add to Playlist', style: TextStyle(color: Colors.white)),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              _showPlaylistMenu();
+                            },
+                          ),
+                          if (playlistId != null)
+                            ListTile(
+                              leading: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                              title: const Text('Remove from this Playlist', style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                audioProvider.removeSongFromPlaylist(playlistId!, song.id);
+                                Navigator.pop(ctx);
+                              },
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                );
               },
             ),
           ],

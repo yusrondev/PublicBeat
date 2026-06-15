@@ -97,10 +97,24 @@ class _DashboardLayoutState extends State<DashboardLayout> with SingleTickerProv
     // Navigation bar height on Android/iOS is typically around 56-64
     final bottomNavBarHeight = kBottomNavigationBarHeight;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F0F14), // Dark metallic grey background
-      body: Stack(
-        children: [
+    return WillPopScope(
+      onWillPop: () async {
+        if (_slideController.isAnimating || _slideController.value > 0) {
+          _collapsePlayer();
+          return false; // Prevent exit, collapse player instead
+        }
+        if (_currentTab != 0) {
+          setState(() {
+            _currentTab = 0;
+          });
+          return false; // Prevent exit, return to Home tab instead
+        }
+        return true; // Allow exit if player is closed and on Home tab
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F0F14), // Dark metallic grey background
+        body: Stack(
+          children: [
           // 1. DYNAMIC COLOR GRADIENT SHADOW (Home/Search Background)
           Container(
             decoration: const BoxDecoration(
@@ -212,6 +226,6 @@ class _DashboardLayoutState extends State<DashboardLayout> with SingleTickerProv
           );
         },
       ),
-    );
+    ));
   }
 }
