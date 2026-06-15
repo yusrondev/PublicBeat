@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  Timer? _debounce;
 
   final List<Map<String, dynamic>> _browseCategories = [
     {'title': 'Pop Hits', 'query': 'pop hits top charts', 'color': Colors.purpleAccent},
@@ -28,12 +30,29 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String val) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    
+    // Call setState to instantly show/hide the clear (X) icon while typing
+    setState(() {});
+
+    _debounce = Timer(const Duration(milliseconds: 600), () {
+      if (val.trim().isNotEmpty) {
+        Provider.of<AudioProvider>(context, listen: false).search(val);
+      } else if (val.isEmpty) {
+        Provider.of<AudioProvider>(context, listen: false).search('');
+      }
+    });
+  }
+
   void _onSearchSubmitted(String val) {
+    _debounce?.cancel();
     if (val.trim().isNotEmpty) {
       Provider.of<AudioProvider>(context, listen: false).search(val);
     }
@@ -82,6 +101,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: TextField(
                         controller: _searchController,
                         focusNode: _focusNode,
+                        onChanged: _onSearchChanged,
                         onSubmitted: _onSearchSubmitted,
                         textInputAction: TextInputAction.search,
                         style: const TextStyle(color: Colors.white),

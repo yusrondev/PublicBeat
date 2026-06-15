@@ -31,18 +31,18 @@ Future<void> main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => AudioProvider(),
-      child: const MusicApp(),
+      child: const PublicBeatApp(),
     ),
   );
 }
 
-class MusicApp extends StatelessWidget {
-  const MusicApp({Key? key}) : super(key: key);
+class PublicBeatApp extends StatelessWidget {
+  const PublicBeatApp({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Fusion Player',
+      title: 'Public Beat',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
