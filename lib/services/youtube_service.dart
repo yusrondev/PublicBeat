@@ -64,10 +64,9 @@ class YoutubeService {
 
   // Retrieve the direct streaming audio URL for a YouTube Video ID
   // Quality strategy:
-  //   1. Best Opus stream ≥ 160kbps  (highest perceived quality, efficient codec)
-  //   2. Any Opus stream              (still great for most use cases)
-  //   3. Fallback: highest bitrate    (usually AAC/m4a)
-  Future<AudioStreamResult?> getAudioStreamInfo(String videoId) async {
+  //   1. High Quality: Highest resolution muxed stream (best audio bitrate, high data usage)
+  //   2. Data Saver: Lowest resolution muxed stream (adequate audio, low data usage)
+  Future<AudioStreamResult?> getAudioStreamInfo(String videoId, {bool highQuality = false}) async {
     try {
       final manifest = await _yt.videos.streams.getManifest(videoId);
       
@@ -76,9 +75,11 @@ class YoutubeService {
       final muxedStreams = manifest.muxed.toList();
       if (muxedStreams.isEmpty) return null;
       
-      // We only need audio, so pick the lowest quality video (e.g. 144p/360p) to minimize data usage.
+      // Sort streams by resolution (ascending)
       muxedStreams.sort((a, b) => a.videoResolution.height.compareTo(b.videoResolution.height));
-      final stream = muxedStreams.first;
+      
+      // Select the lowest resolution for Data Saver, or the highest resolution for High Quality
+      final stream = highQuality ? muxedStreams.last : muxedStreams.first;
       
       return AudioStreamResult(
         url: stream.url.toString(),

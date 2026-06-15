@@ -4,6 +4,7 @@ import '../models/song.dart';
 import '../providers/audio_provider.dart';
 import '../widgets/glassmorphic_panel.dart';
 import '../widgets/track_tile.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(int) changeTab; // To switch to Search tab
@@ -20,15 +21,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isInitializing = true;
   List<Song> _recommendations = [];
-
-  final List<Map<String, dynamic>> _quickGenres = [
-    {'title': 'Lofi Study', 'query': 'lofi study beats', 'icon': Icons.book, 'color': Colors.indigo},
-    {'title': 'Chill Acoustic', 'query': 'acoustic covers chill', 'icon': Icons.music_note, 'color': Colors.teal},
-    {'title': 'Gaming Synth', 'query': 'synthwave gaming beats', 'icon': Icons.gamepad, 'color': Colors.deepPurple},
-    {'title': 'Morning Piano', 'query': 'relaxing piano morning', 'icon': Icons.wb_sunny, 'color': Colors.amber},
-    {'title': 'Rainy Day Jazz', 'query': 'coffee shop jazz rain', 'icon': Icons.beach_access, 'color': Colors.brown},
-    {'title': 'Workout Gym', 'query': 'workout music gym playlist', 'icon': Icons.fitness_center, 'color': Colors.redAccent},
-  ];
 
   @override
   void initState() {
@@ -95,67 +87,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const Icon(Icons.history, color: Colors.white70),
+                    IconButton(
+                      icon: const Icon(Icons.settings, color: Colors.white70),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
 
-              // Quick Access Grid (Spotify style)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _quickGenres.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: 2.7,
-                  ),
-                  itemBuilder: (context, index) {
-                    final item = _quickGenres[index];
-                    return GestureDetector(
-                      onTap: () async {
-                        // Switch to search tab and execute search
-                        widget.changeTab(1); // 1 is Search tab
-                        audioProvider.search(item['query']);
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0x1AFFFFFF),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0x0FFFFFFF)),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 50,
-                              height: double.infinity,
-                              color: item['color'],
-                              child: Icon(item['icon'], color: Colors.white, size: 24),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                item['title'],
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 10),
 
               // Promoted / Featured Banner Card
               Padding(
@@ -185,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Pure Glassmorphic Audio',
+                              'Public Beat',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -194,20 +139,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              'Stream music freely without limits, account logins, or advertisements.',
+                              'Aplikasi gratis untuk mendengarkan musik sepuasnya tanpa iklan.',
                               style: TextStyle(
                                 color: Colors.white60,
                                 fontSize: 12,
+                                height: 1.4,
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const CircleAvatar(
-                        radius: 36,
-                        backgroundColor: Colors.pink,
-                        child: Icon(Icons.play_arrow, size: 40, color: Colors.white),
+                      Image.asset(
+                        'assets/public-beat-logo.png',
+                        width: 56,
+                        height: 56,
+                        fit: BoxFit.contain,
                       ),
                     ],
                   ),

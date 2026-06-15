@@ -24,6 +24,9 @@ class AudioProvider extends ChangeNotifier {
   List<Song> _favorites = [];
   List<Playlist> _playlists = [];
   List<Song> _recentSearchedSongs = [];
+  
+  // Settings
+  bool _isHighQuality = false;
 
   // Playback States
   bool _isPlaying = false;
@@ -49,6 +52,7 @@ class AudioProvider extends ChangeNotifier {
   List<Playlist> get playlists => _playlists;
   List<Song> get searchResults => _searchResults;
   List<Song> get recentSearchedSongs => _recentSearchedSongs;
+  bool get isHighQuality => _isHighQuality;
 
   Stream<PositionData> get positionDataStream =>
       Rx.combineLatest3<Duration, Duration, Duration?, PositionData>(
@@ -63,6 +67,7 @@ class AudioProvider extends ChangeNotifier {
     _loadFavorites();
     _loadPlaylists();
     _loadRecentSearchedSongs();
+    _loadSettings();
   }
 
   void _initStreams() {
@@ -155,6 +160,31 @@ class AudioProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Error loading playlists: $e');
+    }
+  }
+
+  // Load and save settings
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isHighQuality = prefs.getBool('isHighQuality') ?? false;
+      notifyListeners();
+    } catch (e) {
+      print('Error loading settings: $e');
+    }
+  }
+
+  Future<void> setHighQuality(bool value) async {
+    _isHighQuality = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isHighQuality', value);
+      
+      // If currently playing, we could technically reload the stream here,
+      // but usually settings take effect on the next song.
+    } catch (e) {
+      print('Error saving settings: $e');
     }
   }
 
@@ -317,7 +347,10 @@ class AudioProvider extends ChangeNotifier {
       }
 
       // Fetch audio stream URL
-      final streamResult = await _ytService.getAudioStreamInfo(song.id);
+      final streamResult = await _ytService.getAudioStreamInfo(
+        song.id, 
+        highQuality: _isHighQuality,
+      );
 
       if (streamResult == null) {
         _isLoading = false;
