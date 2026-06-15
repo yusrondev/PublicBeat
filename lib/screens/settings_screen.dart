@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:disk_space_2/disk_space_2.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../providers/audio_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -63,6 +66,114 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: 'Kualitas audio tertinggi. Menggunakan lebih banyak data (HD Video stream).',
                   isSelected: audioProvider.isHighQuality,
                   onTap: () => audioProvider.setHighQuality(true),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          const Text(
+            'Offline Downloads',
+            style: TextStyle(
+              color: Colors.pink,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0x1AFFFFFF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0x0FFFFFFF)),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  title: const Text(
+                    'Lokasi Unduhan',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      audioProvider.downloadPath.isEmpty 
+                          ? 'Belum diatur' 
+                          : audioProvider.downloadPath,
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  trailing: const Icon(Icons.folder_open, color: Colors.pink),
+                  onTap: () async {
+                    // Request storage permissions before picking directory
+                    var status = await Permission.storage.status;
+                    if (!status.isGranted) {
+                      status = await Permission.storage.request();
+                    }
+                    
+                    // On Android 11+ (API 30+), request manageExternalStorage to write outside app-specific directories
+                    var manageStatus = await Permission.manageExternalStorage.status;
+                    if (!manageStatus.isGranted) {
+                      manageStatus = await Permission.manageExternalStorage.request();
+                    }
+
+                    if (status.isGranted || manageStatus.isGranted) {
+                      String? result = await FilePicker.getDirectoryPath();
+                      if (result != null) {
+                        audioProvider.setDownloadPath(result);
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Izin penyimpanan diperlukan untuk memilih folder.'),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+                const Divider(color: Color(0x1AFFFFFF), height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: FutureBuilder<double?>(
+                    future: DiskSpace.getFreeDiskSpace,
+                    builder: (context, snapshot) {
+                      final freeSpaceStr = snapshot.hasData 
+                          ? '${(snapshot.data! / 1024).toStringAsFixed(1)} GB' 
+                          : 'Menghitung...';
+                          
+                      return Row(
+                        children: [
+                          const Icon(Icons.storage, color: Colors.white60),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'Sisa Kapasitas Penyimpanan',
+                              style: TextStyle(color: Colors.white, fontSize: 14),
+                            ),
+                          ),
+                          Text(
+                            freeSpaceStr,
+                            style: const TextStyle(
+                              color: Colors.pink, 
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ],
             ),

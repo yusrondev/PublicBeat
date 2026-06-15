@@ -4,6 +4,8 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
 import '../models/playlist.dart';
 import '../services/youtube_service.dart';
@@ -25,8 +27,13 @@ class AudioProvider extends ChangeNotifier {
   List<Playlist> _playlists = [];
   List<Song> _recentSearchedSongs = [];
   
-  // Settings
+  // Settings & Downloads
   bool _isHighQuality = false;
+  String _downloadPath = '';
+  List<Song> _downloadedSongs = [];
+  Map<String, double> _downloadProgress = {};
+  Map<String, Song> _activeDownloads = {};
+  Map<String, bool> _cancelFlags = {};
 
   // Playback States
   bool _isPlaying = false;
@@ -53,14 +60,20 @@ class AudioProvider extends ChangeNotifier {
   List<Song> get searchResults => _searchResults;
   List<Song> get recentSearchedSongs => _recentSearchedSongs;
   bool get isHighQuality => _isHighQuality;
+  String get downloadPath => _downloadPath;
+  List<Song> get downloadedSongs => _downloadedSongs;
+  Map<String, double> get downloadProgress => _downloadProgress;
+  Map<String, Song> get activeDownloads => _activeDownloads;
 
   Stream<PositionData> get positionDataStream =>
-      Rx.combineLatest3<Duration, Duration, Duration?, PositionData>(
-          _player.positionStream,
-          _player.bufferedPositionStream,
-          _player.durationStream,
-          (position, bufferedPosition, duration) => PositionData(
-              position, bufferedPosition, duration ?? Duration.zero));
+      Rx.merge([
+        _player.positionStream,
+        _player.bufferedPositionStream,
+        _player.durationStream,
+      ]).map((_) => PositionData(
+          _player.position,
+          _player.bufferedPosition,
+          _player.duration ?? _duration));
 
   AudioProvider() {
     _initStreams();
@@ -68,6 +81,7 @@ class AudioProvider extends ChangeNotifier {
     _loadPlaylists();
     _loadRecentSearchedSongs();
     _loadSettings();
+    _loadDownloadedSongs();
   }
 
   void _initStreams() {
@@ -168,6 +182,29 @@ class AudioProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isHighQuality = prefs.getBool('isHighQuality') ?? false;
+      _downloadPath = prefs.getString('downloadPath') ?? '';
+      
+      if (_downloadPath.isEmpty) {
+        // Fallback to external storage Documents or Music folder
+        if (Platform.isAndroid) {
+          final extDir = await getExternalStorageDirectory();
+          if (extDir != null) {
+            _downloadPath = '${extDir.path}/Public Beat';
+          }
+        } else {
+          final docDir = await getApplicationDocumentsDirectory();
+          _downloadPath = '${docDir.path}/Public Beat';
+        }
+      }
+      
+      // Ensure directory exists
+      if (_downloadPath.isNotEmpty) {
+        final dir = Directory(_downloadPath);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+      }
+      
       notifyListeners();
     } catch (e) {
       print('Error loading settings: $e');
@@ -180,12 +217,158 @@ class AudioProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isHighQuality', value);
-      
-      // If currently playing, we could technically reload the stream here,
-      // but usually settings take effect on the next song.
     } catch (e) {
       print('Error saving settings: $e');
     }
+  }
+
+  Future<void> setDownloadPath(String path) async {
+    _downloadPath = path;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('downloadPath', path);
+    } catch (e) {
+      print('Error saving download path: $e');
+    }
+  }
+
+  // Load and Save Downloaded Songs
+  Future<void> _loadDownloadedSongs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? data = prefs.getString('downloaded_songs');
+      if (data != null) {
+        final List<dynamic> jsonList = json.decode(data);
+        _downloadedSongs = jsonList.map((json) => Song.fromJson(json)).toList();
+        
+        // Verify files still exist
+        _downloadedSongs.removeWhere((song) {
+          if (song.localPath != null) {
+            return !File(song.localPath!).existsSync();
+          }
+          return true;
+        });
+        
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error loading downloaded songs: $e');
+    }
+  }
+
+  Future<void> _saveDownloadedSongs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String data = json.encode(_downloadedSongs.map((e) => e.toJson()).toList());
+      await prefs.setString('downloaded_songs', data);
+    } catch (e) {
+      print('Error saving downloaded songs: $e');
+    }
+  }
+
+  Future<void> startDownload(Song song) async {
+    if (_downloadedSongs.any((s) => s.id == song.id)) return;
+    if (_downloadProgress.containsKey(song.id)) return;
+    
+    _downloadProgress[song.id] = 0.0;
+    _activeDownloads[song.id] = song;
+    notifyListeners();
+    
+    try {
+      // Ensure directory exists
+      final dir = Directory(_downloadPath);
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      
+      // Sanitize title for filename
+      final sanitizedTitle = song.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '');
+      final fileName = '$sanitizedTitle - ${song.artist}.mp4';
+      final savePath = '$_downloadPath/$fileName';
+      
+      final success = await _ytService.downloadSong(
+        song.id, 
+        savePath, 
+        highQuality: _isHighQuality,
+        onProgress: (progress) {
+          _downloadProgress[song.id] = progress;
+          notifyListeners();
+        },
+        isCancelled: () => _cancelFlags[song.id] ?? false,
+      );
+      
+      if (_cancelFlags[song.id] == true) {
+        // Download was cancelled, clean up already handled in youtube_service
+        return;
+      }
+      
+      if (success) {
+        song.localPath = savePath;
+        _downloadedSongs.add(song);
+        await _saveDownloadedSongs();
+      } else {
+        throw Exception('Download failed inside YoutubeService');
+      }
+    } catch (e) {
+      print('Download error: $e');
+      // Remove partially created file if any
+      try {
+        final sanitizedTitle = song.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '');
+        final fileName = '$sanitizedTitle - ${song.artist}.mp4';
+        final file = File('$_downloadPath/$fileName');
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (_) {}
+    } finally {
+      _downloadProgress.remove(song.id);
+      _activeDownloads.remove(song.id);
+      _cancelFlags.remove(song.id);
+      notifyListeners();
+    }
+  }
+
+  // Cancel an active download
+  void cancelDownload(String songId) {
+    if (_activeDownloads.containsKey(songId)) {
+      _cancelFlags[songId] = true;
+      _activeDownloads.remove(songId);
+      _downloadProgress.remove(songId);
+      notifyListeners();
+    }
+  }
+
+  // Delete a downloaded song
+  Future<void> deleteDownloadedSong(String songId) async {
+    final index = _downloadedSongs.indexWhere((s) => s.id == songId);
+    if (index != -1) {
+      final song = _downloadedSongs[index];
+      if (song.localPath != null) {
+        try {
+          final file = File(song.localPath!);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (e) {
+          print('Error deleting file: $e');
+        }
+      }
+      _downloadedSongs.removeAt(index);
+      await _saveDownloadedSongs();
+      notifyListeners();
+    }
+  }
+
+  // Reorder downloaded songs
+  Future<void> reorderDownloadedSongs(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = _downloadedSongs.removeAt(oldIndex);
+    _downloadedSongs.insert(newIndex, item);
+    await _saveDownloadedSongs();
+    notifyListeners();
   }
 
   // Save playlists to local storage
@@ -273,9 +456,9 @@ class AudioProvider extends ChangeNotifier {
     _recentSearchedSongs.removeWhere((s) => s.id == song.id);
     _recentSearchedSongs.insert(0, song);
     
-    // Keep max 4 songs
-    if (_recentSearchedSongs.length > 4) {
-      _recentSearchedSongs = _recentSearchedSongs.sublist(0, 4);
+    // Keep max 10 songs
+    if (_recentSearchedSongs.length > 10) {
+      _recentSearchedSongs = _recentSearchedSongs.sublist(0, 10);
     }
     
     _saveRecentSearchedSongs();
@@ -346,21 +529,36 @@ class AudioProvider extends ChangeNotifier {
         _currentIndex = _queue.indexWhere((s) => s.id == song.id);
       }
 
-      // Fetch audio stream URL
-      final streamResult = await _ytService.getAudioStreamInfo(
-        song.id, 
-        highQuality: _isHighQuality,
-      );
-
-      if (streamResult == null) {
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
+      // Check if song is downloaded
+      String playUrl = '';
+      bool isLocal = false;
       
-      final url = streamResult.url;
-      song.streamUrl = url;
-      print('▶ Audio stream: ${streamResult.codec} @ ${streamResult.bitrateKbps}kbps');
+      final downloadedMatch = _downloadedSongs.firstWhere(
+        (s) => s.id == song.id, 
+        orElse: () => song
+      );
+      
+      if (downloadedMatch.localPath != null && File(downloadedMatch.localPath!).existsSync()) {
+        playUrl = downloadedMatch.localPath!;
+        isLocal = true;
+        print('▶ Playing from local file: $playUrl');
+      } else {
+        // Fetch audio stream URL
+        final streamResult = await _ytService.getAudioStreamInfo(
+          song.id, 
+          highQuality: _isHighQuality,
+        );
+
+        if (streamResult == null) {
+          _isLoading = false;
+          notifyListeners();
+          return;
+        }
+        
+        playUrl = streamResult.url;
+        song.streamUrl = playUrl;
+        print('▶ Audio stream: ${streamResult.codec} @ ${streamResult.bitrateKbps}kbps');
+      }
 
       // Initialize player media with an Android Chrome User-Agent.
       // This prevents YouTube from detecting the internal "ExoPlayer" default agent and returning 403 Forbidden.
@@ -371,9 +569,13 @@ class AudioProvider extends ChangeNotifier {
       final playlist = ConcatenatingAudioSource(
         children: _queue.map((s) {
           final isCurrent = s.id == song.id;
+          final uri = isCurrent 
+              ? (isLocal ? Uri.file(playUrl) : Uri.parse(playUrl)) 
+              : Uri.parse('https://example.com/dummy.mp3');
+              
           return AudioSource.uri(
-            isCurrent ? Uri.parse(url) : Uri.parse('https://example.com/dummy.mp3'),
-            headers: isCurrent ? {
+            uri,
+            headers: (isCurrent && !isLocal) ? {
               'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
             } : {},
             tag: MediaItem(

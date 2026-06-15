@@ -169,17 +169,64 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ),
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: recentSongs.length,
-              itemBuilder: (context, index) {
-                return TrackTile(
-                  song: recentSongs[index],
-                  contextQueue: recentSongs,
-                  isFromSearch: true, // Playing a recent search counts as from search to bump it
-                );
-              },
+            SizedBox(
+              height: 170,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: recentSongs.length,
+                itemBuilder: (context, index) {
+                  final song = recentSongs[index];
+                  return GestureDetector(
+                    onTap: () {
+                      audioProvider.playSong(song, contextQueue: recentSongs);
+                      audioProvider.addRecentSearchedSong(song);
+                    },
+                    child: Container(
+                      width: 120,
+                      margin: EdgeInsets.only(
+                        left: index == 0 ? 20 : 12, 
+                        right: index == recentSongs.length - 1 ? 20 : 0
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              song.thumbnailUrl, 
+                              width: 120, 
+                              height: 120, 
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            song.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white60,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 16),
           ],

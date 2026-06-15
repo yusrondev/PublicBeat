@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:async';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/song.dart';
 
@@ -89,6 +91,94 @@ class YoutubeService {
     } catch (e) {
       print('Error in YoutubeService.getAudioStreamUrl: $e');
       return null;
+    }
+  }
+
+  // Download the song to a specific path
+  Future<bool> downloadSong(String videoId, String savePath, {
+      bool highQuality = false, 
+      Function(double)? onProgress,
+      bool Function()? isCancelled,
+  }) async {
+    try {
+      final manifest = await _yt.videos.streams.getManifest(videoId).timeout(const Duration(seconds: 15));
+      
+      StreamInfo streamInfo;
+      final muxedStreams = manifest.muxed.toList();
+      
+      if (muxedStreams.isNotEmpty) {
+        // Sort muxed streams by resolution ascending
+        muxedStreams.sort((a, b) => a.videoResolution.height.compareTo(b.videoResolution.height));
+        streamInfo = highQuality ? muxedStreams.last : muxedStreams.first;
+      } else {
+        // Fallback to audio only
+        final audioStreams = manifest.audioOnly.toList();
+        if (audioStreams.isEmpty) return false;
+        streamInfo = highQuality ? audioStreams.withHighestBitrate() : audioStreams.first;
+      }
+      
+      var stream = _yt.videos.streamsClient.get(streamInfo);
+      var file = File(savePath);
+      var fileStream = file.openWrite();
+      
+      var totalSize = streamInfo.size.totalBytes;
+      int downloaded = 0;
+      int lastDataTime = DateTime.now().millisecondsSinceEpoch;
+      
+      final completer = Completer<bool>();
+      StreamSubscription? subscription;
+      Timer? progressTimer;
+
+      progressTimer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+        // Handle explicit cancellation
+        if (isCancelled != null && isCancelled()) {
+          timer.cancel();
+          subscription?.cancel();
+          await fileStream.flush();
+          await fileStream.close();
+          if (await file.exists()) {
+            await file.delete();
+          }
+          if (!completer.isCompleted) completer.complete(false);
+          return;
+        }
+        
+        // Handle stream timeout (15 seconds without data)
+        if (DateTime.now().millisecondsSinceEpoch - lastDataTime > 15000) {
+          timer.cancel();
+          subscription?.cancel();
+          await fileStream.flush();
+          await fileStream.close();
+          if (!completer.isCompleted) completer.completeError(Exception('Download stream timed out'));
+        }
+      });
+
+      subscription = stream.listen(
+        (data) {
+          lastDataTime = DateTime.now().millisecondsSinceEpoch;
+          fileStream.add(data);
+          downloaded += data.length;
+          if (onProgress != null && totalSize > 0) {
+            onProgress(downloaded / totalSize);
+          }
+        },
+        onError: (e) {
+          progressTimer?.cancel();
+          if (!completer.isCompleted) completer.completeError(e);
+        },
+        onDone: () async {
+          progressTimer?.cancel();
+          await fileStream.flush();
+          await fileStream.close();
+          if (!completer.isCompleted) completer.complete(true);
+        },
+        cancelOnError: true,
+      );
+
+      return await completer.future;
+    } catch (e) {
+      print('Error in YoutubeService.downloadSong: $e');
+      return false;
     }
   }
 

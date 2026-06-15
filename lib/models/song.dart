@@ -5,6 +5,7 @@ class Song {
   final String thumbnailUrl;
   final Duration duration;
   String? streamUrl;
+  String? localPath; // For offline downloads
 
   Song({
     required this.id,
@@ -13,6 +14,7 @@ class Song {
     required this.thumbnailUrl,
     required this.duration,
     this.streamUrl,
+    this.localPath,
   });
 
   // Convert a Song object to JSON Map
@@ -23,6 +25,7 @@ class Song {
       'artist': artist,
       'thumbnailUrl': thumbnailUrl,
       'durationMs': duration.inMilliseconds,
+      'localPath': localPath,
     };
   }
 
@@ -34,6 +37,7 @@ class Song {
       artist: json['artist'] as String,
       thumbnailUrl: json['thumbnailUrl'] as String,
       duration: Duration(milliseconds: json['durationMs'] as int),
+      localPath: json['localPath'] as String?,
     );
   }
 

@@ -9,6 +9,7 @@ class TrackTile extends StatelessWidget {
   final List<Song> contextQueue;
   final String? playlistId;
   final bool isFromSearch;
+  final bool isFromDownloads;
 
   const TrackTile({
     Key? key,
@@ -16,6 +17,7 @@ class TrackTile extends StatelessWidget {
     required this.contextQueue,
     this.playlistId,
     this.isFromSearch = false,
+    this.isFromDownloads = false,
   }) : super(key: key);
 
   @override
@@ -23,6 +25,8 @@ class TrackTile extends StatelessWidget {
     final audioProvider = Provider.of<AudioProvider>(context);
     final isCurrent = audioProvider.currentSong?.id == song.id;
     final isPlaying = isCurrent && audioProvider.isPlaying;
+    final isDownloading = audioProvider.downloadProgress.containsKey(song.id);
+    final downloadProgress = audioProvider.downloadProgress[song.id] ?? 0.0;
 
     void _showPlaylistMenu() {
       showModalBottomSheet(
@@ -86,13 +90,18 @@ class TrackTile extends StatelessWidget {
             ? Border.all(color: const Color(0x40AD1457), width: 1.0)
             : Border.all(color: Colors.transparent, width: 1.0),
       ),
-      child: ListTile(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Opacity(
+            opacity: isDownloading ? 0.5 : 1.0,
+            child: ListTile(
         onTap: () {
           audioProvider.playSong(song, contextQueue: contextQueue);
           if (isFromSearch) {
             audioProvider.addRecentSearchedSong(song);
           }
-          if (playlistId != null) {
+          if (playlistId != null || isFromDownloads) {
             Navigator.push(
               context,
               PageRouteBuilder(
@@ -222,6 +231,57 @@ class TrackTile extends StatelessWidget {
                               _showPlaylistMenu();
                             },
                           ),
+                          if (!audioProvider.downloadedSongs.any((s) => s.id == song.id) && !audioProvider.downloadProgress.containsKey(song.id))
+                            ListTile(
+                              leading: const Icon(Icons.download, color: Colors.white),
+                              title: const Text('Download for Offline', style: TextStyle(color: Colors.white)),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                audioProvider.startDownload(song);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Downloading ${song.title}...'),
+                                    backgroundColor: Colors.pink,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                          if (audioProvider.downloadProgress.containsKey(song.id))
+                            ListTile(
+                              leading: const SizedBox(
+                                width: 24, height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.pink),
+                              ),
+                              title: const Text('Cancel Download', style: TextStyle(color: Colors.pink)),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                audioProvider.cancelDownload(song.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Download cancelled'),
+                                    backgroundColor: Colors.redAccent,
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
+                          if (audioProvider.downloadedSongs.any((s) => s.id == song.id))
+                            ListTile(
+                              leading: const Icon(Icons.delete_outline, color: Colors.red),
+                              title: const Text('Remove Download', style: TextStyle(color: Colors.red)),
+                              onTap: () {
+                                Navigator.pop(ctx);
+                                audioProvider.deleteDownloadedSong(song.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('${song.title} removed from downloads'),
+                                    backgroundColor: Colors.redAccent,
+                                    duration: const Duration(seconds: 2),
+                                  ),
+                                );
+                              },
+                            ),
                           if (playlistId != null)
                             ListTile(
                               leading: const Icon(Icons.remove_circle_outline, color: Colors.red),
@@ -240,6 +300,19 @@ class TrackTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+          ),
+          if (isDownloading)
+            Positioned(
+              left: 0, right: 0, bottom: 0,
+              child: LinearProgressIndicator(
+                value: downloadProgress,
+                backgroundColor: Colors.transparent,
+                color: Colors.pink,
+                minHeight: 3,
+              ),
+            ),
+        ],
       ),
     );
   }

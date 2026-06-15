@@ -17,6 +17,7 @@ Future<void> main() async {
     androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
     androidNotificationChannelName: 'Audio playback',
     androidNotificationOngoing: true,
+    androidNotificationIcon: 'mipmap/launcher_icon',
   );
   
   // Set system status bar and navigation bar overlays to transparent and matching dark theme
