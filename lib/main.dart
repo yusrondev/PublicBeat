@@ -2,11 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'providers/audio_provider.dart';
 import 'screens/dashboard_layout.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Request notification permission for Android 13+ status bar playback controls
+  await Permission.notification.request();
+
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.ryanheise.bg_demo.channel.audio',
+    androidNotificationChannelName: 'Audio playback',
+    androidNotificationOngoing: true,
+  );
   
   // Set system status bar and navigation bar overlays to transparent and matching dark theme
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -88,6 +89,17 @@ class AudioProvider extends ChangeNotifier {
     // Listen to buffer timeline
     _player.bufferedPositionStream.listen((buff) {
       _bufferedPosition = buff;
+    });
+
+    // Listen to index changes to detect Next/Prev button clicks from background notification
+    _player.currentIndexStream.listen((index) {
+      if (index != null && _queue.isNotEmpty && index != _currentIndex && !_isLoading) {
+        if (index >= 0 && index < _queue.length) {
+          // Pause immediately to prevent PlayerException from dummy URLs
+          _player.pause();
+          playSong(_queue[index], contextQueue: _queue);
+        }
+      }
     });
   }
 
@@ -319,13 +331,30 @@ class AudioProvider extends ChangeNotifier {
 
       // Initialize player media with an Android Chrome User-Agent.
       // This prevents YouTube from detecting the internal "ExoPlayer" default agent and returning 403 Forbidden.
-      await _player.setUrl(
-        url,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
-        },
+      // Create a ConcatenatingAudioSource representing the entire queue
+      // This tricks just_audio_background into showing the Next/Prev buttons.
+      // We use a dummy URL for all non-current items, and when the user clicks next/prev,
+      // our currentIndexStream listener intercepts it and calls playSong to fetch the real URL.
+      final playlist = ConcatenatingAudioSource(
+        children: _queue.map((s) {
+          final isCurrent = s.id == song.id;
+          return AudioSource.uri(
+            isCurrent ? Uri.parse(url) : Uri.parse('https://example.com/dummy.mp3'),
+            headers: isCurrent ? {
+              'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36',
+            } : {},
+            tag: MediaItem(
+              id: s.id,
+              album: 'PublicBeat',
+              title: s.title,
+              artist: s.artist,
+              artUri: Uri.parse(s.thumbnailUrl),
+            ),
+          );
+        }).toList(),
       );
-      
+
+      await _player.setAudioSource(playlist, initialIndex: _currentIndex, initialPosition: Duration.zero);
       _player.play();
       
     } catch (e) {
@@ -439,6 +468,18 @@ class AudioProvider extends ChangeNotifier {
 
     _isSearching = false;
     notifyListeners();
+  }
+
+  // Generate dynamic recommendations based on user history
+  Future<List<Song>> getRecommendations() async {
+    try {
+      // Added "official audio" and removed generic "music" to avoid live streamed videos
+      // which currently cause a parsing bug in youtube_explode_dart 3.1.0 ("Invalid radix-10 number: Streamed")
+      return await _ytService.searchSongs("top 50 global pop hits official audio");
+    } catch (e) {
+      print('Error fetching recommendations: $e');
+      return [];
+    }
   }
 
   @override

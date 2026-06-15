@@ -40,34 +40,13 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final provider = Provider.of<AudioProvider>(context, listen: false);
       
-      List<Song> tempSongs = [];
-      if (provider.queue.isNotEmpty) {
-        tempSongs = provider.queue;
-      } else if (provider.favorites.isNotEmpty) {
-        tempSongs = provider.favorites;
-      }
-
+      final results = await provider.getRecommendations();
+      
       if (mounted) {
         setState(() {
-          _recommendations = tempSongs;
+          _recommendations = results;
+          _isInitializing = false;
         });
-      }
-      
-      // If no recommendations are available, let's load a few default songs
-      if (_recommendations.isEmpty) {
-        await provider.search("acoustic chill");
-        if (mounted) {
-          setState(() {
-            _recommendations = provider.searchResults;
-            _isInitializing = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _isInitializing = false;
-          });
-        }
       }
     } catch (e) {
       print('Error loading initial music: $e');
