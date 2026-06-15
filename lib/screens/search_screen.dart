@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/audio_provider.dart';
 import '../widgets/track_tile.dart';
+import 'player_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -181,6 +182,30 @@ class _SearchScreenState extends State<SearchScreen> {
                     onTap: () {
                       audioProvider.playSong(song, contextQueue: recentSongs);
                       audioProvider.addRecentSearchedSong(song);
+                      Navigator.push(
+                        context,
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+                            backgroundColor: const Color(0xFF0F0F14),
+                            body: PlayerScreen(
+                              slideValue: 1.0,
+                              onCollapse: () => Navigator.pop(context),
+                              onExpand: () {},
+                            ),
+                          ),
+                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeOutQuart;
+                            var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                          transitionDuration: const Duration(milliseconds: 350),
+                        ),
+                      );
                     },
                     child: Container(
                       width: 120,
@@ -262,6 +287,7 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 120),
       physics: const BouncingScrollPhysics(),
       itemCount: audioProvider.searchResults.length,
       itemBuilder: (context, index) {

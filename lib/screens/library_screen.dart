@@ -5,44 +5,122 @@ import '../widgets/glassmorphic_panel.dart';
 import '../widgets/track_tile.dart';
 import 'playlist_detail_screen.dart';
 import 'downloads_screen.dart';
+import 'liked_songs_screen.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({Key? key}) : super(key: key);
 
   void _showCreatePlaylistDialog(BuildContext context, AudioProvider provider) {
     final controller = TextEditingController();
-    showDialog(
+    showGeneralDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E1E28),
-          title: const Text('Create Playlist', style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: controller,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: 'Playlist Name',
-              hintStyle: TextStyle(color: Colors.white38),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.pink)),
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Scaffold(
+          backgroundColor: Colors.transparent,
+          resizeToAvoidBottomInset: true,
+          body: Center(
+            child: Material(
+              color: Colors.transparent,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.85,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E28).withOpacity(0.9),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Colors.white12, width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.queue_music, size: 48, color: Colors.pinkAccent),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Create Playlist',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  TextField(
+                    controller: controller,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'My Awesome Mix',
+                      hintStyle: const TextStyle(color: Colors.white38),
+                      filled: true,
+                      fillColor: Colors.black26,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.pinkAccent, width: 1.5),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    ),
+                    autofocus: true,
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (controller.text.trim().isNotEmpty) {
+                              provider.createPlaylist(controller.text);
+                              Navigator.pop(context);
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.pinkAccent,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 0,
+                          ),
+                          child: const Text('Create', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              ),
             ),
-            autofocus: true,
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
-            ),
-            TextButton(
-              onPressed: () {
-                if (controller.text.trim().isNotEmpty) {
-                  provider.createPlaylist(controller.text);
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Create', style: TextStyle(color: Colors.pink)),
-            ),
-          ],
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.95, end: 1.0).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutBack)),
+            child: child,
+          ),
         );
       },
     );
@@ -76,28 +154,42 @@ class LibraryScreen extends StatelessWidget {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.add_box_outlined, color: Colors.white),
-                      onPressed: () => _showCreatePlaylistDialog(context, audioProvider),
+                    GestureDetector(
+                      onTap: () => _showCreatePlaylistDialog(context, audioProvider),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.pinkAccent.withOpacity(0.8), Colors.deepPurpleAccent.withOpacity(0.8)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.pinkAccent.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 24),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
 
-            // Playlists Horizontal List
+            // Playlists Vertical Cards
             if (playlists.isNotEmpty)
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 140,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    scrollDirection: Axis.horizontal,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: playlists.length,
-                    itemBuilder: (context, index) {
-                      final playlist = playlists[index];
-                      return GestureDetector(
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    final playlist = playlists[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      child: GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
@@ -106,17 +198,19 @@ class LibraryScreen extends StatelessWidget {
                             ),
                           );
                         },
-                        child: Container(
-                          width: 110,
-                          margin: const EdgeInsets.only(right: 12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        child: GlassmorphicPanel(
+                          padding: const EdgeInsets.all(20),
+                          child: Row(
                             children: [
                               Container(
-                                width: 110,
-                                height: 110,
+                                width: 70,
+                                height: 70,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF2A2A35),
+                                  gradient: const LinearGradient(
+                                    colors: [Colors.deepOrange, Colors.orangeAccent],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                   image: playlist.songs.isNotEmpty
                                       ? DecorationImage(
@@ -126,34 +220,60 @@ class LibraryScreen extends StatelessWidget {
                                       : null,
                                 ),
                                 child: playlist.songs.isEmpty
-                                    ? const Icon(Icons.music_note, color: Colors.white24, size: 40)
+                                    ? const Icon(
+                                        Icons.queue_music,
+                                        color: Colors.white,
+                                        size: 36,
+                                      )
                                     : null,
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                playlist.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      playlist.name,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${playlist.songs.length} track${playlist.songs.length == 1 ? '' : 's'}',
+                                      style: const TextStyle(
+                                        color: Colors.white60,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 20),
                             ],
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  },
+                  childCount: playlists.length,
                 ),
               ),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
             // Favorites summary banner card
-            if (favSongs.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const LikedSongsScreen()),
+                    );
+                  },
                   child: GlassmorphicPanel(
                     padding: const EdgeInsets.all(20),
                     child: Row(
@@ -199,40 +319,13 @@ class LibraryScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        // Floating Glass Play button
-                        Builder(builder: (context) {
-                          final isFavPlaying = audioProvider.isPlaying &&
-                              audioProvider.currentSong != null &&
-                              favSongs.any((s) => s.id == audioProvider.currentSong!.id);
-                          return GestureDetector(
-                            onTap: () {
-                              if (isFavPlaying) {
-                                audioProvider.pause();
-                              } else {
-                                if (audioProvider.currentSong != null &&
-                                    favSongs.any((s) => s.id == audioProvider.currentSong!.id)) {
-                                  audioProvider.play();
-                                } else if (favSongs.isNotEmpty) {
-                                  audioProvider.playSong(favSongs.first, contextQueue: favSongs);
-                                }
-                              }
-                            },
-                            child: CircleAvatar(
-                              radius: 26,
-                              backgroundColor: Colors.pink,
-                              child: Icon(
-                                isFavPlaying ? Icons.pause : Icons.play_arrow,
-                                color: Colors.white,
-                                size: 28,
-                              ),
-                            ),
-                          );
-                        }),
+                        const Icon(Icons.arrow_forward_ios, color: Colors.white38, size: 20),
                       ],
                     ),
                   ),
                 ),
               ),
+            ),
 
             // Downloads summary banner card
             SliverToBoxAdapter(
@@ -300,22 +393,9 @@ class LibraryScreen extends StatelessWidget {
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
             // Library List Content
-            if (favSongs.isEmpty && playlists.isEmpty)
+            if (playlists.isEmpty && favSongs.isEmpty && audioProvider.downloadedSongs.isEmpty)
               SliverFillRemaining(
                 child: _buildEmptyState(),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final song = favSongs[index];
-                    return TrackTile(
-                      song: song,
-                      contextQueue: favSongs,
-                    );
-                  },
-                  childCount: favSongs.length,
-                ),
               ),
           ],
         ),
@@ -343,7 +423,7 @@ class LibraryScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const Text(
-            'Your Library is Empty',
+            'No Playlists Yet',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 18,
@@ -354,7 +434,7 @@ class LibraryScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 48),
             child: Text(
-              'Create a playlist or tap the heart icon next to any song to add it here.',
+              'Create your first playlist using the + button above.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white38,

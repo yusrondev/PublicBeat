@@ -117,14 +117,59 @@ class _DashboardLayoutState extends State<DashboardLayout> with SingleTickerProv
           children: [
           // 1. DYNAMIC COLOR GRADIENT SHADOW (Home/Search Background)
           Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Color(0xFF1D1B26), // Deep purple-tinted dark
-                  Color(0xFF0F0F14), // Pure dark
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+            color: const Color(0xFF0A0A0E), // Deeper pure dark
+          ),
+          // Top right pink glow
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.pinkAccent.withOpacity(0.15),
+                    Colors.pinkAccent.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Bottom left purple glow
+          Positioned(
+            bottom: 0,
+            left: -150,
+            child: Container(
+              width: 500,
+              height: 500,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.deepPurpleAccent.withOpacity(0.12),
+                    Colors.deepPurpleAccent.withOpacity(0.0),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Center subtle blue glow
+          Positioned(
+            top: screenHeight * 0.3,
+            left: screenHeight * 0.1,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    Colors.blueAccent.withOpacity(0.08),
+                    Colors.blueAccent.withOpacity(0.0),
+                  ],
+                ),
               ),
             ),
           ),

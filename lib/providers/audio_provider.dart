@@ -456,9 +456,9 @@ class AudioProvider extends ChangeNotifier {
     _recentSearchedSongs.removeWhere((s) => s.id == song.id);
     _recentSearchedSongs.insert(0, song);
     
-    // Keep max 10 songs
-    if (_recentSearchedSongs.length > 10) {
-      _recentSearchedSongs = _recentSearchedSongs.sublist(0, 10);
+    // Keep max 5 songs
+    if (_recentSearchedSongs.length > 5) {
+      _recentSearchedSongs = _recentSearchedSongs.sublist(0, 5);
     }
     
     _saveRecentSearchedSongs();
@@ -607,6 +607,13 @@ class AudioProvider extends ChangeNotifier {
 
   Future<void> pause() async {
     await _player.pause();
+  }
+
+  Future<void> closePlayer() async {
+    await _player.stop();
+    _currentSong = null;
+    _isPlaying = false;
+    notifyListeners();
   }
 
   Future<void> seek(Duration position) async {

@@ -34,11 +34,26 @@ class GlassmorphicPanel extends StatelessWidget {
           height: height,
           decoration: BoxDecoration(
             color: color,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withOpacity(0.08),
+                Colors.white.withOpacity(0.02),
+              ],
+            ),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
               color: borderColor,
               width: 0.8,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           padding: padding,
           child: child,

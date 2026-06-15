@@ -96,41 +96,38 @@ class TrackTile extends StatelessWidget {
           Opacity(
             opacity: isDownloading ? 0.5 : 1.0,
             child: ListTile(
-        onTap: () {
-          audioProvider.playSong(song, contextQueue: contextQueue);
-          if (isFromSearch) {
-            audioProvider.addRecentSearchedSong(song);
-          }
-          if (playlistId != null || isFromDownloads) {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
-                  backgroundColor: const Color(0xFF0F0F14),
-                  body: PlayerScreen(
-                    slideValue: 1.0,
-                    onCollapse: () => Navigator.pop(context),
-                    onExpand: () {},
+              contentPadding: const EdgeInsets.only(left: 16, right: 0, top: 4, bottom: 4),
+              onTap: () {
+                audioProvider.playSong(song, contextQueue: contextQueue);
+                if (isFromSearch) {
+                  audioProvider.addRecentSearchedSong(song);
+                }
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+                      backgroundColor: const Color(0xFF0F0F14),
+                      body: PlayerScreen(
+                        slideValue: 1.0,
+                        onCollapse: () => Navigator.pop(context),
+                        onExpand: () {},
+                      ),
+                    ),
+                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                      const begin = Offset(0.0, 1.0);
+                      const end = Offset.zero;
+                      const curve = Curves.easeOutQuart;
+                      var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                      return SlideTransition(
+                        position: animation.drive(tween),
+                        child: child,
+                      );
+                    },
+                    transitionDuration: const Duration(milliseconds: 350),
                   ),
-                ),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(0.0, 1.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeOutQuart;
-
-                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-
-                  return SlideTransition(
-                    position: animation.drive(tween),
-                    child: child,
-                  );
-                },
-                transitionDuration: const Duration(milliseconds: 350),
-              ),
-            );
-          }
-        },
-        leading: ClipRRect(
+                );
+              },
+              leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: Image.network(
             song.thumbnailUrl,
@@ -191,28 +188,27 @@ class TrackTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Duration tag
-            Text(
-              '$minutes:$seconds',
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
-            ),
-            const SizedBox(width: 8),
             // Favorite toggle button
             IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
               icon: Icon(
                 audioProvider.isFavorite(song)
                     ? Icons.favorite
                     : Icons.favorite_border,
-                size: 20,
-                color: audioProvider.isFavorite(song) ? Colors.pink : Colors.white38,
+                size: 18,
+                color: audioProvider.isFavorite(song) ? Colors.pink : Colors.white70,
               ),
               onPressed: () {
                 audioProvider.toggleFavorite(song);
               },
             ),
+            const SizedBox(width: 8),
             // Options Menu (Add to Playlist / Remove from Playlist)
             IconButton(
-              icon: const Icon(Icons.more_vert, size: 20, color: Colors.white38),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: const Icon(Icons.more_vert, size: 18, color: Colors.white70),
               onPressed: () {
                 showModalBottomSheet(
                   context: context,
@@ -301,8 +297,8 @@ class TrackTile extends StatelessWidget {
           ],
         ),
       ),
-          ),
-          if (isDownloading)
+      ),
+      if (isDownloading)
             Positioned(
               left: 0, right: 0, bottom: 0,
               child: LinearProgressIndicator(

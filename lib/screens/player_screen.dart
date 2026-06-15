@@ -180,12 +180,148 @@ class PlayerScreen extends StatelessWidget {
                             }
                           },
                         ),
+                  // Close Action
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70, size: 22),
+                    onPressed: () {
+                      audioProvider.closePlayer();
+                    },
+                  ),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  // ==========================================
+  // OPTIONS MENU (Advanced Options)
+  // ==========================================
+  void _showOptionsMenu(BuildContext context, AudioProvider audioProvider, Song song) {
+    void showPlaylistMenu() {
+      showModalBottomSheet(
+        context: context,
+        backgroundColor: const Color(0xFF1E1E28),
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (ctx) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text('Add to Playlist', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              ),
+              if (audioProvider.playlists.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(20.0),
+                  child: Text('No playlists created yet.', style: TextStyle(color: Colors.white54)),
+                )
+              else
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: audioProvider.playlists.length,
+                    itemBuilder: (context, index) {
+                      final playlist = audioProvider.playlists[index];
+                      return ListTile(
+                        leading: const Icon(Icons.queue_music, color: Colors.pinkAccent),
+                        title: Text(playlist.name, style: const TextStyle(color: Colors.white)),
+                        onTap: () {
+                          audioProvider.addSongToPlaylist(playlist.id, song);
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Added to ${playlist.name}'),
+                              backgroundColor: Colors.pink,
+                              duration: const Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              const SizedBox(height: 16),
+            ],
+          );
+        },
+      );
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E28),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.playlist_add, color: Colors.white),
+                title: const Text('Add to Playlist', style: TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  showPlaylistMenu();
+                },
+              ),
+              if (!audioProvider.downloadedSongs.any((s) => s.id == song.id) && !audioProvider.downloadProgress.containsKey(song.id))
+                ListTile(
+                  leading: const Icon(Icons.download, color: Colors.white),
+                  title: const Text('Download for Offline', style: TextStyle(color: Colors.white)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    audioProvider.startDownload(song);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Downloading ${song.title}...'),
+                        backgroundColor: Colors.pink,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              if (audioProvider.downloadProgress.containsKey(song.id))
+                ListTile(
+                  leading: const SizedBox(
+                    width: 24, height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.pink),
+                  ),
+                  title: const Text('Cancel Download', style: TextStyle(color: Colors.pink)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    audioProvider.cancelDownload(song.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Download cancelled'),
+                        backgroundColor: Colors.redAccent,
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+              if (audioProvider.downloadedSongs.any((s) => s.id == song.id))
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: const Text('Remove Download', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    audioProvider.deleteDownloadedSong(song.id);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${song.title} removed from downloads'),
+                        backgroundColor: Colors.redAccent,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -320,55 +456,13 @@ class PlayerScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Download Button
-                  if (audioProvider.downloadedSongs.any((s) => s.id == song.id))
-                    const Padding(
-                      padding: EdgeInsets.only(left: 16),
-                      child: Icon(Icons.download_done, color: Colors.green, size: 28),
-                    )
-                  else if (audioProvider.downloadProgress.containsKey(song.id))
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: GestureDetector(
-                        onTap: () {
-                          audioProvider.cancelDownload(song.id);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Download cancelled'),
-                              backgroundColor: Colors.redAccent,
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            const SizedBox(
-                              width: 32, height: 32,
-                              child: CircularProgressIndicator(color: Colors.pink, strokeWidth: 2),
-                            ),
-                            const Icon(Icons.close, size: 16, color: Colors.pink),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: IconButton(
-                        icon: const Icon(Icons.download, color: Colors.white70, size: 28),
-                        onPressed: () {
-                          audioProvider.startDownload(song);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Downloading ${song.title}...'),
-                              backgroundColor: Colors.pink,
-                              duration: const Duration(seconds: 2),
-                            ),
-                          );
-                        },
-                      ),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: IconButton(
+                      icon: const Icon(Icons.more_vert, color: Colors.white70, size: 28),
+                      onPressed: () => _showOptionsMenu(context, audioProvider, song),
                     ),
+                  ),
                 ],
               ),
 
