@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/audio_provider.dart';
 import '../widgets/glassmorphic_panel.dart';
 import '../widgets/track_tile.dart';
+import '../widgets/cached_cover_image.dart';
 import 'playlist_detail_screen.dart';
 import 'downloads_screen.dart';
 import 'liked_songs_screen.dart';
@@ -212,12 +213,6 @@ class LibraryScreen extends StatelessWidget {
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(12),
-                                  image: playlist.songs.isNotEmpty
-                                      ? DecorationImage(
-                                          image: NetworkImage(playlist.songs.first.thumbnailUrl),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null,
                                 ),
                                 child: playlist.songs.isEmpty
                                     ? const Icon(
@@ -225,7 +220,10 @@ class LibraryScreen extends StatelessWidget {
                                         color: Colors.white,
                                         size: 36,
                                       )
-                                    : null,
+                                    : CachedCoverImage(
+                                        song: playlist.songs.first,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
@@ -261,12 +259,11 @@ class LibraryScreen extends StatelessWidget {
                   childCount: playlists.length,
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
             // Favorites summary banner card
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: GestureDetector(
                   onTap: () {
                     Navigator.push(
@@ -330,7 +327,7 @@ class LibraryScreen extends StatelessWidget {
             // Downloads summary banner card
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 child: GestureDetector(
                   onTap: () {
                     Navigator.push(

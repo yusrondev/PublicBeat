@@ -9,7 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../models/song.dart';
 import '../models/playlist.dart';
 import '../services/youtube_service.dart';
-
+import 'package:http/http.dart' as http;
 class AudioProvider extends ChangeNotifier {
   final AudioPlayer _player = AudioPlayer(
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -35,6 +35,7 @@ class AudioProvider extends ChangeNotifier {
   Map<String, double> _downloadProgress = {};
   Map<String, Song> _activeDownloads = {};
   Map<String, bool> _cancelFlags = {};
+  String _appDocPath = '';
 
   // Playback States
   bool _isPlaying = false;
@@ -66,6 +67,7 @@ class AudioProvider extends ChangeNotifier {
   List<Song> get downloadedSongs => _downloadedSongs;
   Map<String, double> get downloadProgress => _downloadProgress;
   Map<String, Song> get activeDownloads => _activeDownloads;
+  String get appDocPath => _appDocPath;
 
   Stream<PositionData> get positionDataStream =>
       Rx.merge([
@@ -124,6 +126,44 @@ class AudioProvider extends ChangeNotifier {
     });
   }
 
+  // Cover Image Management
+  Future<void> _downloadCover(Song song) async {
+    if (_appDocPath.isEmpty) return;
+    try {
+      final dir = Directory('$_appDocPath/covers');
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
+      final file = File('${dir.path}/${song.id}.jpg');
+      if (!await file.exists()) {
+        final response = await http.get(Uri.parse(song.thumbnailUrl));
+        if (response.statusCode == 200) {
+          await file.writeAsBytes(response.bodyBytes);
+        }
+      }
+    } catch (e) {
+      print('Error downloading cover: $e');
+    }
+  }
+
+  Future<void> _checkAndCleanupCovers(String songId) async {
+    if (_appDocPath.isEmpty) return;
+    bool isInFavorites = _favorites.any((s) => s.id == songId);
+    bool isInDownloads = _downloadedSongs.any((s) => s.id == songId);
+    bool isInPlaylists = _playlists.any((p) => p.songs.any((s) => s.id == songId));
+    
+    if (!isInFavorites && !isInDownloads && !isInPlaylists) {
+      try {
+        final file = File('$_appDocPath/covers/$songId.jpg');
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        print('Error deleting cover: $e');
+      }
+    }
+  }
+
   // Load favorites from local storage
   Future<void> _loadFavorites() async {
     try {
@@ -158,8 +198,10 @@ class AudioProvider extends ChangeNotifier {
   void toggleFavorite(Song song) {
     if (isFavorite(song)) {
       _favorites.removeWhere((s) => s.id == song.id);
+      _checkAndCleanupCovers(song.id);
     } else {
       _favorites.add(song);
+      _downloadCover(song);
     }
     _saveFavorites();
     notifyListeners();
@@ -196,7 +238,13 @@ class AudioProvider extends ChangeNotifier {
           }
         } else {
           final docDir = await getApplicationDocumentsDirectory();
+          _appDocPath = docDir.path;
           _downloadPath = '${docDir.path}/Public Beat';
+        }
+      } else {
+        if (Platform.isIOS) {
+          final docDir = await getApplicationDocumentsDirectory();
+          _appDocPath = docDir.path;
         }
       }
       
@@ -321,6 +369,7 @@ class AudioProvider extends ChangeNotifier {
         song.localPath = savePath;
         _downloadedSongs.add(song);
         await _saveDownloadedSongs();
+        _downloadCover(song);
       } else {
         throw Exception('Download failed inside YoutubeService');
       }
@@ -370,6 +419,7 @@ class AudioProvider extends ChangeNotifier {
       }
       _downloadedSongs.removeAt(index);
       await _saveDownloadedSongs();
+      _checkAndCleanupCovers(songId);
       notifyListeners();
     }
   }
@@ -412,8 +462,12 @@ class AudioProvider extends ChangeNotifier {
   }
 
   void deletePlaylist(String id) {
+    final playlist = _playlists.firstWhere((p) => p.id == id);
     _playlists.removeWhere((p) => p.id == id);
     _savePlaylists();
+    for (var song in playlist.songs) {
+      _checkAndCleanupCovers(song.id);
+    }
     notifyListeners();
   }
 
@@ -424,6 +478,7 @@ class AudioProvider extends ChangeNotifier {
       if (!_playlists[index].songs.any((s) => s.id == song.id)) {
         _playlists[index].songs.add(song);
         _savePlaylists();
+        _downloadCover(song);
         notifyListeners();
       }
     }
@@ -434,6 +489,7 @@ class AudioProvider extends ChangeNotifier {
     if (index != -1) {
       _playlists[index].songs.removeWhere((s) => s.id == songId);
       _savePlaylists();
+      _checkAndCleanupCovers(songId);
       notifyListeners();
     }
   }

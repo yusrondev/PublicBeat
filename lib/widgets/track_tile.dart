@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/song.dart';
 import '../providers/audio_provider.dart';
+import '../providers/audio_provider.dart';
 import '../screens/player_screen.dart';
+import '../widgets/cached_cover_image.dart';
 
 class TrackTile extends StatelessWidget {
   final Song song;
@@ -127,45 +129,12 @@ class TrackTile extends StatelessWidget {
                   ),
                 );
               },
-              leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            song.thumbnailUrl,
-            width: 50,
-            height: 50,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
+              leading: CachedCoverImage(
+                song: song,
                 width: 50,
                 height: 50,
-                color: Colors.grey[900],
-                child: const Icon(Icons.music_note, color: Colors.white60),
-              );
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                width: 50,
-                height: 50,
-                color: Colors.grey[900],
-                child: Center(
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      value: loadingProgress.expectedTotalBytes != null
-                          ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                          : null,
-                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.pink),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+                borderRadius: BorderRadius.circular(8),
+              ),
         title: Text(
           song.title,
           maxLines: 1,

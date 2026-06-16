@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 import '../models/song.dart';
 import '../providers/audio_provider.dart';
 import '../widgets/glassmorphic_panel.dart';
+import '../widgets/cached_cover_image.dart';
 
 class PlayerScreen extends StatefulWidget {
   final double slideValue;
@@ -135,15 +136,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Raw background image (fallback or base layer)
-                  Container(
-                    decoration: BoxDecoration(
-                      image: DecorationImage(
-                        image: NetworkImage(song.thumbnailUrl),
-                        fit: BoxFit.cover,
-                      ),
+                    // Raw background image (fallback or base layer)
+                    CachedCoverImage(
+                      song: song,
+                      fit: BoxFit.cover,
                     ),
-                  ),
                   
                   // Video Canvas Background
                   if (audioProvider.enableVideoCanvas && _videoController != null && _videoController!.value.isInitialized)
@@ -238,14 +235,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
               child: Row(
                 children: [
                   // Small album thumbnail
-                  ClipRRect(
+                  CachedCoverImage(
+                    song: song,
+                    width: 44,
+                    height: 44,
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.network(
-                      song.thumbnailUrl,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    ),
                   ),
                   const SizedBox(width: 12),
                   // Title and Artist
@@ -532,21 +526,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     ),
                   ],
                 ),
-                child: ClipRRect(
+                child: CachedCoverImage(
+                  song: song,
                   borderRadius: BorderRadius.circular(24),
-                  child: Image.network(
-                    song.thumbnailUrl,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, progress) {
-                      if (progress == null) return child;
-                      return Container(
-                        color: Colors.black38,
-                        child: const Center(
-                          child: CircularProgressIndicator(color: Colors.pink),
-                        ),
-                      );
-                    },
-                  ),
                 ),
               ),
             ),
