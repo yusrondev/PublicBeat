@@ -46,7 +46,7 @@ class LibraryScreen extends StatelessWidget {
                   const Icon(Icons.queue_music, size: 48, color: Colors.pinkAccent),
                   const SizedBox(height: 16),
                   const Text(
-                    'Create Playlist',
+                    'Buat Playlist',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,
@@ -58,7 +58,7 @@ class LibraryScreen extends StatelessWidget {
                     controller: controller,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: 'My Awesome Mix',
+                      hintText: 'Kompilasi Terbaikku',
                       hintStyle: const TextStyle(color: Colors.white38),
                       filled: true,
                       fillColor: Colors.black26,
@@ -84,7 +84,7 @@ class LibraryScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Cancel', style: TextStyle(color: Colors.white54, fontSize: 16)),
+                          child: const Text('Batal', style: TextStyle(color: Colors.white54, fontSize: 16)),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -103,7 +103,7 @@ class LibraryScreen extends StatelessWidget {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
                           ),
-                          child: const Text('Create', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: const Text('Buat', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                     ],
@@ -147,7 +147,7 @@ class LibraryScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Text(
-                      'My Library',
+                      'Koleksiku',
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -240,7 +240,7 @@ class LibraryScreen extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${playlist.songs.length} track${playlist.songs.length == 1 ? '' : 's'}',
+                                      '${playlist.songs.length} lagu',
                                       style: const TextStyle(
                                         color: Colors.white60,
                                         fontSize: 13,
@@ -298,7 +298,7 @@ class LibraryScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Liked Songs',
+                                'Lagu Disukai',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -307,7 +307,7 @@ class LibraryScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${favSongs.length} track${favSongs.length > 1 ? 's' : ''}',
+                                '${favSongs.length} lagu',
                                 style: const TextStyle(
                                   color: Colors.white60,
                                   fontSize: 13,
@@ -362,7 +362,7 @@ class LibraryScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Downloads',
+                                'Unduhan',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -371,7 +371,7 @@ class LibraryScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                '${audioProvider.downloadedSongs.length} track${audioProvider.downloadedSongs.length > 1 ? 's' : ''} offline',
+                                '${audioProvider.downloadedSongs.length} lagu tersimpan',
                                 style: const TextStyle(
                                   color: Colors.white60,
                                   fontSize: 13,
@@ -420,7 +420,7 @@ class LibraryScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           const Text(
-            'No Playlists Yet',
+            'Belum Ada Playlist',
             style: TextStyle(
               color: Colors.white70,
               fontSize: 18,
@@ -431,7 +431,7 @@ class LibraryScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 48),
             child: Text(
-              'Create your first playlist using the + button above.',
+              'Buat playlist pertamamu dengan menekan tombol + di atas.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white38,

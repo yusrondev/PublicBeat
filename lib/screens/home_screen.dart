@@ -51,11 +51,11 @@ class _HomeScreenState extends State<HomeScreen> {
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
-      return 'Good Morning';
+      return 'Selamat Pagi';
     } else if (hour < 17) {
-      return 'Good Afternoon';
+      return 'Selamat Siang';
     } else {
-      return 'Good Evening';
+      return 'Selamat Malam';
     }
   }
 
@@ -120,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text(
-                                'FEATURED',
+                                'SOROTAN',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
@@ -167,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'Recommended For You',
+                  'Rekomendasi Untukmu',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Center(
                     child: Text(
-                      'No recommendations yet.\nTry searching in the Search tab to play music.',
+                      'Belum ada rekomendasi.\nCoba cari lagu di tab Cari.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: Colors.white.withOpacity(0.5)),
                     ),

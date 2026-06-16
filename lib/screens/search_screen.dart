@@ -100,7 +100,7 @@ class _SearchScreenState extends State<SearchScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Speech recognition not available or permission denied.')),
+          const SnackBar(content: Text('Pengenalan suara tidak tersedia atau izin ditolak.')),
         );
       }
     } else {
@@ -123,7 +123,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 24, 20, 16),
               child: Text(
-                'Search',
+                'Cari',
                 style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
@@ -157,7 +157,7 @@ class _SearchScreenState extends State<SearchScreen> {
                         textInputAction: TextInputAction.search,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: 'Songs, artists, or genres...',
+                          hintText: 'Lagu, artis, atau genre...',
                           hintStyle: TextStyle(color: Colors.white38),
                           border: InputBorder.none,
                           isDense: true,
@@ -220,7 +220,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
               child: Text(
-                'Recently played',
+                'Terakhir diputar',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -331,12 +331,12 @@ class _SearchScreenState extends State<SearchScreen> {
             const Icon(Icons.music_off, size: 64, color: Colors.white24),
             const SizedBox(height: 16),
             const Text(
-              'No results found',
+              'Pencarian tidak ditemukan',
               style: TextStyle(color: Colors.white60, fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             const Text(
-              'Try adjusting your search terms.',
+              'Coba gunakan kata kunci lain.',
               style: TextStyle(color: Colors.white38, fontSize: 13),
             ),
           ],

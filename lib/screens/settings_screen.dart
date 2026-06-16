@@ -23,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Settings',
+          'Pengaturan',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -35,7 +35,7 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           const Text(
-            'Audio Quality',
+            'Kualitas Audio',
             style: TextStyle(
               color: Colors.pink,
               fontSize: 14,
@@ -72,7 +72,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           const Text(
-            'Visuals & UI',
+            'Visual & Antarmuka',
             style: TextStyle(
               color: Colors.pink,
               fontSize: 14,
@@ -119,7 +119,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           const Text(
-            'Offline Downloads',
+            'Unduhan Offline',
             style: TextStyle(
               color: Colors.pink,
               fontSize: 14,
@@ -227,7 +227,7 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           const Text(
-            'About',
+            'Tentang',
             style: TextStyle(
               color: Colors.pink,
               fontSize: 14,
@@ -257,7 +257,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Stream music freely without limits, account logins, or advertisements.',
+                  'Dengarkan musik sebebasnya tanpa batas, tanpa login akun, dan tanpa iklan.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white60,
@@ -267,7 +267,7 @@ class SettingsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 const Text(
-                  'Version 1.0.0',
+                  'Versi 1.0.0',
                   style: TextStyle(
                     color: Colors.white38,
                     fontSize: 12,

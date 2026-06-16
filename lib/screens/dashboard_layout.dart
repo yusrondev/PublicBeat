@@ -254,17 +254,17 @@ class _DashboardLayoutState extends State<DashboardLayout> with SingleTickerProv
                   BottomNavigationBarItem(
                     icon: Icon(Icons.home_outlined),
                     activeIcon: Icon(Icons.home),
-                    label: 'Home',
+                    label: 'Beranda',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.search),
                     activeIcon: Icon(Icons.search_outlined),
-                    label: 'Search',
+                    label: 'Cari',
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.favorite_outline),
                     activeIcon: Icon(Icons.favorite),
-                    label: 'Library',
+                    label: 'Koleksi',
                   ),
                 ],
               ),

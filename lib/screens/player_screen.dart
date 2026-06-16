@@ -376,6 +376,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   // OPTIONS MENU (Advanced Options)
   // ==========================================
   void _showOptionsMenu(BuildContext context, AudioProvider audioProvider, Song song) {
+    // Unfocus any active text field (like the search bar) to prevent the keyboard from popping up when the modal is closed
+    FocusManager.instance.primaryFocus?.unfocus();
+
     void showPlaylistMenu() {
       showModalBottomSheet(
         context: context,
