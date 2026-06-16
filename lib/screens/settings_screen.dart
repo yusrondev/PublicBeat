@@ -87,29 +87,34 @@ class SettingsScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0x0FFFFFFF)),
             ),
-            child: SwitchListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              title: const Text(
-                'Video Canvas (MV Background)',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
-              subtitle: const Padding(
-                padding: EdgeInsets.only(top: 6),
-                child: Text(
-                  'Putar video klip (MV) secara looping di latar belakang pemutar musik untuk efek dramatis.',
-                  style: TextStyle(
-                    color: Colors.white60,
-                    fontSize: 12,
+            child: Column(
+              children: [
+                SwitchListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  title: const Text(
+                    'Video Canvas (MV Background)',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
+                  subtitle: const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      'Putar video klip (MV) secara looping di latar belakang pemutar musik untuk efek dramatis.',
+                      style: TextStyle(
+                        color: Colors.white60,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  activeColor: Colors.pinkAccent,
+                  value: audioProvider.enableVideoCanvas,
+                  onChanged: (val) => audioProvider.setVideoCanvas(val),
                 ),
-              ),
-              activeColor: Colors.pinkAccent,
-              value: audioProvider.enableVideoCanvas,
-              onChanged: (val) => audioProvider.setVideoCanvas(val),
+
+              ],
             ),
           ),
           const SizedBox(height: 32),

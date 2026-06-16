@@ -16,6 +16,7 @@ class DashboardLayout extends StatefulWidget {
 class _DashboardLayoutState extends State<DashboardLayout> with SingleTickerProviderStateMixin {
   int _currentTab = 0;
   late AnimationController _slideController;
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   // Screens list
   late final List<Widget> _screens;

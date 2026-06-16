@@ -38,7 +38,8 @@ class YoutubeService {
       }
 
       final searchList = await _yt.search.search(searchQuery);
-      final List<Song> songs = [];
+      final List<Song> topicSongs = [];
+      final List<Song> otherSongs = [];
 
       for (final video in searchList) {
         // Exclude live streams, videos without duration, and extremely long compilation videos (>15 mins)
@@ -46,18 +47,30 @@ class YoutubeService {
             video.duration!.inMinutes > 0 && 
             video.duration!.inMinutes < 15) {
           
-          final cleanTitle = _cleanTitle(video.title);
+          final parsedData = _parseTitleAndArtist(video.title, video.author);
           
-          songs.add(Song(
+          final song = Song(
             id: video.id.value,
-            title: cleanTitle,
-            artist: _cleanArtist(video.author),
+            title: parsedData['title']!,
+            artist: parsedData['artist']!,
             thumbnailUrl: video.thumbnails.highResUrl,
             duration: video.duration!,
-          ));
+          );
+
+          final authorLower = video.author.toLowerCase();
+          final titleLower = video.title.toLowerCase();
+
+          // Prioritize YouTube Music "Topic" channels or explicit "Official Audio"
+          if (authorLower.endsWith('topic') || titleLower.contains('official audio')) {
+            topicSongs.add(song);
+          } else {
+            otherSongs.add(song);
+          }
         }
       }
-      return songs;
+      
+      // Combine lists: Official Audio first, then everything else
+      return [...topicSongs, ...otherSongs];
     } catch (e) {
       print('Error in YoutubeService.searchSongs: $e');
       return [];
@@ -182,42 +195,53 @@ class YoutubeService {
     }
   }
 
-  // Cleans the YouTube video title to resemble a music library track
-  String _cleanTitle(String title) {
+  // Cleans the YouTube video title and author to extract proper Title and Artist
+  Map<String, String> _parseTitleAndArtist(String rawTitle, String rawAuthor) {
     // 1. Remove bracket expressions e.g. [Official Music Video], (Lyrics Video), etc.
-    String cleaned = title
+    String cleanedTitle = rawTitle
         .replaceAll(RegExp(r'\[[^\]]*\]'), '')
         .replaceAll(RegExp(r'\([^\)]*\)'), '');
 
     // 2. Remove standard marketing tags
-    cleaned = cleaned.replaceAll(
+    cleanedTitle = cleanedTitle.replaceAll(
         RegExp(r'(official\s+(music\s+)?video|music\s+video|lyric(\s+video)?|audio|hd|4k|mv|official\s+audio|prod\s+by\s+.*|visualizer)', 
         caseSensitive: false), 
         ''
     );
 
+    String finalTitle = cleanedTitle;
+    String finalArtist = rawAuthor;
+
     // 3. Handle Title split (Artist - Title) if present
-    if (cleaned.contains('-')) {
-      final parts = cleaned.split('-');
-      // Take the second part as title and clean it
-      cleaned = parts.length > 1 ? parts[1] : parts[0];
+    final separatorRegex = RegExp(r'[-–—~|]');
+    if (cleanedTitle.contains(separatorRegex)) {
+      final parts = cleanedTitle.split(separatorRegex);
+      // The first part is usually the artist
+      final extractedArtist = parts[0].trim();
+      // The second part is usually the title
+      final extractedTitle = parts.sublist(1).join('-').trim();
+      
+      if (extractedArtist.isNotEmpty && extractedTitle.isNotEmpty) {
+        finalArtist = extractedArtist;
+        finalTitle = extractedTitle;
+      }
     }
 
-    // 4. Remove trailing/leading junk characters and excessive spaces
-    cleaned = cleaned
+    // 4. Final cleaning
+    finalTitle = finalTitle
         .replaceAll(RegExp(r'^\s*[-|:|•|~]\s*'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
 
-    return cleaned.isNotEmpty ? cleaned : title;
-  }
-
-  // Cleans the channel name to look like a clean artist name
-  String _cleanArtist(String author) {
-    return author
+    finalArtist = finalArtist
         .replaceAll(RegExp(r'(VEVO|- Topic|Official|Music|Records|Entertainment|\s+YT)', caseSensitive: false), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+
+    return {
+      'title': finalTitle.isNotEmpty ? finalTitle : rawTitle,
+      'artist': finalArtist.isNotEmpty ? finalArtist : rawAuthor,
+    };
   }
 
   void dispose() {

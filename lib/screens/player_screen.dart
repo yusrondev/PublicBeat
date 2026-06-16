@@ -8,6 +8,9 @@ import '../models/song.dart';
 import '../providers/audio_provider.dart';
 import '../widgets/glassmorphic_panel.dart';
 import '../widgets/cached_cover_image.dart';
+import '../widgets/lyrics_view.dart';
+import '../services/lyrics_service.dart';
+import '../models/lyric_line.dart';
 
 class PlayerScreen extends StatefulWidget {
   final double slideValue;
@@ -28,6 +31,10 @@ class PlayerScreen extends StatefulWidget {
 class _PlayerScreenState extends State<PlayerScreen> {
   VideoPlayerController? _videoController;
   String? _currentVideoUrl;
+  
+  List<LyricLine>? _lyrics;
+  bool _isFetchingLyrics = false;
+  String? _lastLyricsSongId;
 
   @override
   void initState() {
@@ -39,6 +46,37 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void didUpdateWidget(covariant PlayerScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     _checkVideoInitialization();
+    
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    _checkLyricsInitialization(audioProvider, audioProvider.currentSong);
+  }
+
+  void _checkLyricsInitialization(AudioProvider audioProvider, Song? song) {
+    if (song != null && audioProvider.enableLyrics && widget.slideValue > 0) {
+      if (_lastLyricsSongId != song.id) {
+        _lastLyricsSongId = song.id;
+        _fetchLyrics(song);
+      }
+    } else if (widget.slideValue == 0 || !audioProvider.enableLyrics) {
+      _lyrics = null;
+      _lastLyricsSongId = null;
+    }
+  }
+
+  Future<void> _fetchLyrics(Song song) async {
+    setState(() {
+      _isFetchingLyrics = true;
+      _lyrics = null;
+    });
+    
+    final lyrics = await LyricsService.fetchLyrics(song.id);
+    
+    if (mounted && _lastLyricsSongId == song.id) {
+      setState(() {
+        _lyrics = lyrics;
+        _isFetchingLyrics = false;
+      });
+    }
   }
 
   void _checkVideoInitialization() {
@@ -118,6 +156,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       });
     }
 
+    _checkLyricsInitialization(audioProvider, song);
+
     // Pause or play video based on audio state
     if (audioProvider.isPlaying) {
       _videoController?.play();
@@ -158,9 +198,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   else
                     // Frosted glass filter over the image if no video
                     BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                      filter: ImageFilter.blur(
+                        sigmaX: audioProvider.enableLyrics ? 60 : 30, 
+                        sigmaY: audioProvider.enableLyrics ? 60 : 30
+                      ),
                       child: Container(
-                        color: Colors.black.withOpacity(0.55 + (widget.slideValue * 0.15)),
+                        color: Colors.black.withOpacity(
+                           audioProvider.enableLyrics ? 0.70 : (0.55 + (widget.slideValue * 0.15))
+                        ),
                       ),
                     ),
 
@@ -512,30 +557,32 @@ class _PlayerScreenState extends State<PlayerScreen> {
         Expanded(
           child: (audioProvider.enableVideoCanvas && _videoController != null && _videoController!.value.isInitialized)
               ? const SizedBox.expand() // Fill empty space so background video is visible
-              : Center(
-                  child: AspectRatio(
-              aspectRatio: 1.0,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutBack,
-                margin: EdgeInsets.all(isPlaying ? screenHeight * 0.03 : screenHeight * 0.06), // Scales down on small screens
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(isPlaying ? 0.45 : 0.2),
-                      blurRadius: isPlaying ? 32 : 18,
-                      offset: Offset(0, isPlaying ? 16 : 6),
+              : audioProvider.enableLyrics
+                  ? _buildLyricsSection(widget.slideValue)
+                  : Center(
+                      child: AspectRatio(
+                        aspectRatio: 1.0,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 320),
+                          curve: Curves.easeOutBack,
+                          margin: EdgeInsets.all(isPlaying ? screenHeight * 0.03 : screenHeight * 0.06), // Scales down on small screens
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(isPlaying ? 0.45 : 0.2),
+                                blurRadius: isPlaying ? 32 : 18,
+                                offset: Offset(0, isPlaying ? 16 : 6),
+                              ),
+                            ],
+                          ),
+                          child: CachedCoverImage(
+                            song: song,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
                     ),
-                  ],
-                ),
-                child: CachedCoverImage(
-                  song: song,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-              ),
-            ),
-          ),
         ),
 
         // Text & Progress Seek Bar Column
@@ -574,6 +621,41 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             fontSize: 16,
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        // Lyrics Toggle
+                        GestureDetector(
+                          onTap: () => audioProvider.setLyrics(!audioProvider.enableLyrics),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: audioProvider.enableLyrics ? Colors.pinkAccent.withOpacity(0.2) : Colors.white10,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: audioProvider.enableLyrics ? Colors.pinkAccent.withOpacity(0.5) : Colors.transparent,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.lyrics, 
+                                  size: 14, 
+                                  color: audioProvider.enableLyrics ? Colors.pinkAccent : Colors.white70
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Lyrics',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: audioProvider.enableLyrics ? Colors.pinkAccent : Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -584,7 +666,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ],
               ),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 16),
 
               // Audio Progress Bar
               StreamBuilder<PositionData>(
@@ -696,38 +778,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
         const SizedBox(height: 20),
 
-        // Volume control slider
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-          child: Row(
-            children: [
-              const Icon(Icons.volume_down_rounded, color: Colors.white54, size: 16),
-              Expanded(
-                child: SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                    activeTrackColor: Colors.white70,
-                    inactiveTrackColor: Colors.white12,
-                    thumbColor: Colors.white,
-                  ),
-                  child: Slider(
-                    value: audioProvider.volume,
-                    onChanged: (val) {
-                      audioProvider.setVolume(val);
-                    },
-                  ),
-                ),
-              ),
-              const Icon(Icons.volume_up_rounded, color: Colors.white54, size: 16),
-            ],
-          ),
-        ),
 
-        const SizedBox(height: 24),
         SafeArea(top: false, child: const SizedBox(height: 8)),
       ],
     );
+  }
+
+  Widget _buildLyricsSection(double slideValue) {
+    if (_isFetchingLyrics) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.pinkAccent),
+      );
+    }
+    
+    if (_lyrics == null || _lyrics!.isEmpty) {
+      return const Center(
+        child: Text(
+          "Lirik tidak tersedia",
+          style: TextStyle(color: Colors.white54, fontSize: 16),
+        ),
+      );
+    }
+    
+    return LyricsView(lyrics: _lyrics!, slideValue: slideValue);
   }
 }

@@ -30,6 +30,7 @@ class AudioProvider extends ChangeNotifier {
   // Settings & Downloads
   bool _isHighQuality = false;
   bool _enableVideoCanvas = false;
+  bool _enableLyrics = false;
   String _downloadPath = '';
   List<Song> _downloadedSongs = [];
   Map<String, double> _downloadProgress = {};
@@ -63,6 +64,7 @@ class AudioProvider extends ChangeNotifier {
   List<Song> get recentSearchedSongs => _recentSearchedSongs;
   bool get isHighQuality => _isHighQuality;
   bool get enableVideoCanvas => _enableVideoCanvas;
+  bool get enableLyrics => _enableLyrics;
   String get downloadPath => _downloadPath;
   List<Song> get downloadedSongs => _downloadedSongs;
   Map<String, double> get downloadProgress => _downloadProgress;
@@ -227,6 +229,7 @@ class AudioProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _isHighQuality = prefs.getBool('isHighQuality') ?? false;
       _enableVideoCanvas = prefs.getBool('enableVideoCanvas') ?? false;
+      _enableLyrics = prefs.getBool('enableLyrics') ?? false;
       _downloadPath = prefs.getString('downloadPath') ?? '';
       
       if (_downloadPath.isEmpty) {
@@ -275,10 +278,25 @@ class AudioProvider extends ChangeNotifier {
 
   Future<void> setVideoCanvas(bool value) async {
     _enableVideoCanvas = value;
+    if (value) _enableLyrics = false;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('enableVideoCanvas', value);
+      await prefs.setBool('enableVideoCanvas', _enableVideoCanvas);
+      await prefs.setBool('enableLyrics', _enableLyrics);
+    } catch (e) {
+      print('Error saving settings: $e');
+    }
+  }
+
+  Future<void> setLyrics(bool value) async {
+    _enableLyrics = value;
+    if (value) _enableVideoCanvas = false;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('enableLyrics', _enableLyrics);
+      await prefs.setBool('enableVideoCanvas', _enableVideoCanvas);
     } catch (e) {
       print('Error saving settings: $e');
     }
