@@ -728,14 +728,68 @@ class AudioProvider extends ChangeNotifier {
         otherIndices.shuffle();
         _currentIndex = otherIndices.first;
       } else {
-        _currentIndex = 0;
+        _fetchAndAppendRelatedSong();
+        return;
       }
     } else {
-      _currentIndex = (_currentIndex + 1) % _queue.length;
+      if (_currentIndex == _queue.length - 1) {
+        // Reached the end of the queue
+        if (_loopMode == LoopMode.all) {
+          _currentIndex = 0;
+        } else {
+          // Autoplay engine: fetch related song
+          _fetchAndAppendRelatedSong();
+          return;
+        }
+      } else {
+        _currentIndex = (_currentIndex + 1) % _queue.length;
+      }
     }
 
     if (_currentIndex >= 0 && _currentIndex < _queue.length) {
       playSong(_queue[_currentIndex]);
+    }
+  }
+
+  bool _isFetchingRelated = false;
+
+  Future<void> _fetchAndAppendRelatedSong() async {
+    if (_isFetchingRelated || _currentSong == null) return;
+    
+    _isFetchingRelated = true;
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final artist = _currentSong!.artist;
+      // Search for "Artist Name topic" or "Artist Name songs"
+      final relatedSongs = await _ytService.searchSongs("$artist topic audio");
+      
+      // Filter out songs already in queue (by ID or Title)
+      relatedSongs.removeWhere((s) {
+        final sTitle = s.title.toLowerCase();
+        return _queue.any((q) => q.id == s.id || q.title.toLowerCase() == sTitle);
+      });
+      
+      if (relatedSongs.isNotEmpty) {
+        relatedSongs.shuffle();
+        final nextSong = relatedSongs.first;
+        _queue.add(nextSong);
+        _currentIndex = _queue.length - 1;
+        
+        // Let playSong handle the rest (it sets _isLoading = false eventually)
+        playSong(nextSong);
+      } else {
+        // Stop playback if no related found
+        closePlayer();
+      }
+    } catch (e) {
+      print("Error fetching related song: $e");
+      closePlayer();
+    } finally {
+      _isFetchingRelated = false;
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

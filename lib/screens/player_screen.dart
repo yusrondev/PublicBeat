@@ -45,12 +45,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final audioProvider = Provider.of<AudioProvider>(context, listen: false);
     final song = audioProvider.currentSong;
     
-    if (audioProvider.enableVideoCanvas && song != null && song.streamUrl != null) {
+    // Only initialize video if the player is at least partially expanded (slideValue > 0)
+    // This prevents background PlayerScreens (like the global one when covered by another route)
+    // from simultaneously initializing a second heavy VideoPlayerController.
+    if (widget.slideValue > 0 && audioProvider.enableVideoCanvas && song != null && song.streamUrl != null) {
       if (_currentVideoUrl != song.streamUrl) {
         _currentVideoUrl = song.streamUrl;
         _initVideoPlayer(song.streamUrl!);
       }
-    } else {
+    } else if (widget.slideValue == 0 || !audioProvider.enableVideoCanvas) {
       _disposeVideoPlayer();
     }
   }
@@ -97,15 +100,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
     if (song == null) return const SizedBox.shrink();
 
-    // Initialize or dispose video player dynamically based on state
-    if (audioProvider.enableVideoCanvas && song.streamUrl != null) {
+    // Initialize or dispose video player dynamically based on state and visibility
+    if (widget.slideValue > 0 && audioProvider.enableVideoCanvas && song.streamUrl != null) {
       if (_currentVideoUrl != song.streamUrl) {
         _currentVideoUrl = song.streamUrl;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _initVideoPlayer(song.streamUrl!);
         });
       }
-    } else if (!audioProvider.enableVideoCanvas && _currentVideoUrl != null) {
+    } else if ((widget.slideValue == 0 || !audioProvider.enableVideoCanvas) && _currentVideoUrl != null) {
       _currentVideoUrl = null;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -574,12 +577,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: IconButton(
-                      icon: const Icon(Icons.more_vert, color: Colors.white70, size: 28),
-                      onPressed: () => _showOptionsMenu(context, audioProvider, song),
-                    ),
+                  GestureDetector(
+                    onTap: () => _showOptionsMenu(context, audioProvider, song),
+                    child: const Icon(Icons.more_vert, color: Colors.white70, size: 28),
                   ),
                 ],
               ),

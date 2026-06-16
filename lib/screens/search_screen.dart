@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../providers/audio_provider.dart';
 import '../widgets/track_tile.dart';
 import 'player_screen.dart';
@@ -17,6 +18,9 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   Timer? _debounce;
+  
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
 
   final List<Map<String, dynamic>> _browseCategories = [
     {'title': 'Pop Hits', 'query': 'pop hits top charts', 'color': Colors.purpleAccent},
@@ -28,6 +32,12 @@ class _SearchScreenState extends State<SearchScreen> {
     {'title': 'Gaming Synth', 'query': 'synthwave cyberpunk gaming', 'color': Colors.tealAccent},
     {'title': 'Classical Study', 'query': 'classical piano studying', 'color': Colors.blueGrey},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+  }
 
   @override
   void dispose() {
@@ -56,6 +66,46 @@ class _SearchScreenState extends State<SearchScreen> {
     _debounce?.cancel();
     if (val.trim().isNotEmpty) {
       Provider.of<AudioProvider>(context, listen: false).search(val);
+    }
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) {
+          if (val == 'done' || val == 'notListening') {
+            setState(() => _isListening = false);
+            // Optionally auto trigger search when done
+            if (_searchController.text.trim().isNotEmpty) {
+              _onSearchSubmitted(_searchController.text);
+            }
+          }
+        },
+        onError: (val) {
+          print('Speech onError: $val');
+          setState(() => _isListening = false);
+        },
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          onResult: (val) {
+            setState(() {
+              _searchController.text = val.recognizedWords;
+              // Move cursor to end
+              _searchController.selection = TextSelection.fromPosition(TextPosition(offset: _searchController.text.length));
+            });
+            _onSearchChanged(val.recognizedWords);
+          },
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Speech recognition not available or permission denied.')),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
     }
   }
 
@@ -124,6 +174,14 @@ class _SearchScreenState extends State<SearchScreen> {
                           setState(() {});
                         },
                       ),
+                    IconButton(
+                      icon: Icon(
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: _isListening ? Colors.pinkAccent : Colors.white60,
+                        size: 22,
+                      ),
+                      onPressed: _listen,
+                    ),
                   ],
                 ),
               ),
@@ -180,7 +238,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   final song = recentSongs[index];
                   return GestureDetector(
                     onTap: () {
-                      audioProvider.playSong(song, contextQueue: recentSongs);
+                      audioProvider.playSong(song, contextQueue: [song]);
                       audioProvider.addRecentSearchedSong(song);
                       Navigator.push(
                         context,
@@ -294,7 +352,7 @@ class _SearchScreenState extends State<SearchScreen> {
         final song = audioProvider.searchResults[index];
         return TrackTile(
           song: song,
-          contextQueue: audioProvider.searchResults,
+          contextQueue: [song],
           isFromSearch: true,
         );
       },
