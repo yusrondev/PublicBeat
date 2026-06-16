@@ -29,6 +29,7 @@ class AudioProvider extends ChangeNotifier {
   
   // Settings & Downloads
   bool _isHighQuality = false;
+  bool _enableVideoCanvas = false;
   String _downloadPath = '';
   List<Song> _downloadedSongs = [];
   Map<String, double> _downloadProgress = {};
@@ -60,6 +61,7 @@ class AudioProvider extends ChangeNotifier {
   List<Song> get searchResults => _searchResults;
   List<Song> get recentSearchedSongs => _recentSearchedSongs;
   bool get isHighQuality => _isHighQuality;
+  bool get enableVideoCanvas => _enableVideoCanvas;
   String get downloadPath => _downloadPath;
   List<Song> get downloadedSongs => _downloadedSongs;
   Map<String, double> get downloadProgress => _downloadProgress;
@@ -182,6 +184,7 @@ class AudioProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _isHighQuality = prefs.getBool('isHighQuality') ?? false;
+      _enableVideoCanvas = prefs.getBool('enableVideoCanvas') ?? false;
       _downloadPath = prefs.getString('downloadPath') ?? '';
       
       if (_downloadPath.isEmpty) {
@@ -217,6 +220,17 @@ class AudioProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isHighQuality', value);
+    } catch (e) {
+      print('Error saving settings: $e');
+    }
+  }
+
+  Future<void> setVideoCanvas(bool value) async {
+    _enableVideoCanvas = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('enableVideoCanvas', value);
     } catch (e) {
       print('Error saving settings: $e');
     }
@@ -546,7 +560,7 @@ class AudioProvider extends ChangeNotifier {
         // Fetch audio stream URL
         final streamResult = await _ytService.getAudioStreamInfo(
           song.id, 
-          highQuality: _isHighQuality,
+          highQuality: _isHighQuality || _enableVideoCanvas,
         );
 
         if (streamResult == null) {

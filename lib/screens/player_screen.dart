@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:audio_video_progress_bar/audio_video_progress_bar.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:video_player/video_player.dart';
 import '../models/song.dart';
 import '../providers/audio_provider.dart';
 import '../widgets/glassmorphic_panel.dart';
 
-class PlayerScreen extends StatelessWidget {
+class PlayerScreen extends StatefulWidget {
   final double slideValue;
   final VoidCallback onCollapse;
   final VoidCallback onExpand;
@@ -20,26 +21,121 @@ class PlayerScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends State<PlayerScreen> {
+  VideoPlayerController? _videoController;
+  String? _currentVideoUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkVideoInitialization();
+  }
+
+  @override
+  void didUpdateWidget(covariant PlayerScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _checkVideoInitialization();
+  }
+
+  void _checkVideoInitialization() {
+    final audioProvider = Provider.of<AudioProvider>(context, listen: false);
+    final song = audioProvider.currentSong;
+    
+    if (audioProvider.enableVideoCanvas && song != null && song.streamUrl != null) {
+      if (_currentVideoUrl != song.streamUrl) {
+        _currentVideoUrl = song.streamUrl;
+        _initVideoPlayer(song.streamUrl!);
+      }
+    } else {
+      _disposeVideoPlayer();
+    }
+  }
+
+  void _initVideoPlayer(String url) {
+    _disposeVideoPlayer();
+    _currentVideoUrl = url;
+    _videoController = VideoPlayerController.networkUrl(
+      Uri.parse(url),
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    )..initialize().then((_) {
+        _videoController?.setVolume(0); // Mute video
+        _videoController?.seekTo(Duration.zero); // Start from 0s
+        _videoController?.play();
+        setState(() {}); // Rebuild after init
+      });
+
+    _videoController?.addListener(() {
+      if (_videoController != null && _videoController!.value.isInitialized) {
+        // Loop between 0 and 10 seconds
+        if (_videoController!.value.position.inSeconds >= 10) {
+          _videoController?.seekTo(Duration.zero);
+        }
+      }
+    });
+  }
+
+  void _disposeVideoPlayer() {
+    _videoController?.dispose();
+    _videoController = null;
+    _currentVideoUrl = null;
+  }
+
+  @override
+  void dispose() {
+    _disposeVideoPlayer();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final audioProvider = Provider.of<AudioProvider>(context);
     final song = audioProvider.currentSong;
 
     if (song == null) return const SizedBox.shrink();
 
+    // Initialize or dispose video player dynamically based on state
+    if (audioProvider.enableVideoCanvas && song.streamUrl != null) {
+      if (_currentVideoUrl != song.streamUrl) {
+        _currentVideoUrl = song.streamUrl;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _initVideoPlayer(song.streamUrl!);
+        });
+      }
+    } else if (!audioProvider.enableVideoCanvas && _currentVideoUrl != null) {
+      _currentVideoUrl = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _disposeVideoPlayer();
+          setState(() {});
+        }
+      });
+    }
+
+    // Pause or play video based on audio state
+    if (audioProvider.isPlaying) {
+      _videoController?.play();
+    } else {
+      _videoController?.pause();
+    }
+
     // Opacities for smooth crossfade
-    final miniPlayerOpacity = (1.0 - slideValue * 4.5).clamp(0.0, 1.0);
-    final fullPlayerOpacity = ((slideValue - 0.18) * 1.3).clamp(0.0, 1.0);
+    final miniPlayerOpacity = (1.0 - widget.slideValue * 4.5).clamp(0.0, 1.0);
+    final fullPlayerOpacity = ((widget.slideValue - 0.18) * 1.3).clamp(0.0, 1.0);
 
     return Stack(
       children: [
-        // 1. DYNAMIC BLURRED ARTWORK BACKGROUND (Full Player)
-        if (slideValue > 0.05)
+        // 1. DYNAMIC BLURRED ARTWORK BACKGROUND OR VIDEO CANVAS
+        if (widget.slideValue > 0.05)
           Positioned.fill(
             child: Opacity(
-              opacity: slideValue,
+              opacity: widget.slideValue,
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  // Raw background image
+                  // Raw background image (fallback or base layer)
                   Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
@@ -48,13 +144,48 @@ class PlayerScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Frosted glass filter over the image
-                  BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                    child: Container(
-                      color: Colors.black.withOpacity(0.55 + (slideValue * 0.15)),
+                  
+                  // Video Canvas Background
+                  if (audioProvider.enableVideoCanvas && _videoController != null && _videoController!.value.isInitialized)
+                    FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: _videoController!.value.size.width,
+                        height: _videoController!.value.size.height,
+                        child: VideoPlayer(_videoController!),
+                      ),
+                    )
+                  else
+                    // Frosted glass filter over the image if no video
+                    BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                      child: Container(
+                        color: Colors.black.withOpacity(0.55 + (widget.slideValue * 0.15)),
+                      ),
                     ),
-                  ),
+
+                  // Dramatic Full-Screen Gradient for MV Canvas effect
+                  if (audioProvider.enableVideoCanvas && _videoController != null && _videoController!.value.isInitialized) ...[
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: const [0.0, 0.15, 0.4, 0.65, 0.85, 1.0],
+                            colors: [
+                              const Color(0xFF0F0F14), // Solid dark at the very top
+                              const Color(0xFF0F0F14).withOpacity(0.8), // Steep fade
+                              const Color(0xFF0F0F14).withOpacity(0.35), // Center has some tint to avoid extreme brightness
+                              const Color(0xFF0F0F14).withOpacity(0.85), // Gets darker towards the text
+                              const Color(0xFF0F0F14).withOpacity(0.98), // Very dark behind title/controls
+                              const Color(0xFF0F0F14), // Solid dark at the bottom
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -64,10 +195,13 @@ class PlayerScreen extends StatelessWidget {
         if (miniPlayerOpacity > 0)
           Opacity(
             opacity: miniPlayerOpacity,
-            child: _buildMiniPlayer(context, audioProvider, song),
+            child: GestureDetector(
+              onTap: widget.onExpand,
+              child: _buildMiniPlayer(context, audioProvider, song),
+            ),
           ),
 
-        // If expanded or expanding, show full player
+        // 3. FULL PLAYER CONTENT
         if (fullPlayerOpacity > 0)
           Opacity(
             opacity: fullPlayerOpacity,
@@ -98,7 +232,7 @@ class PlayerScreen extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: InkWell(
-            onTap: onExpand,
+            onTap: widget.onExpand,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -348,7 +482,7 @@ class PlayerScreen extends StatelessWidget {
               children: [
                 IconButton(
                   icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70, size: 30),
-                  onPressed: onCollapse,
+                  onPressed: widget.onCollapse,
                 ),
                 const Text(
                   'NOW PLAYING',
@@ -379,8 +513,10 @@ class PlayerScreen extends StatelessWidget {
 
         // Album Artwork Card with Playback scale micro-animation
         Expanded(
-          child: Center(
-            child: AspectRatio(
+          child: (audioProvider.enableVideoCanvas && _videoController != null && _videoController!.value.isInitialized)
+              ? const SizedBox.expand() // Fill empty space so background video is visible
+              : Center(
+                  child: AspectRatio(
               aspectRatio: 1.0,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 320),
