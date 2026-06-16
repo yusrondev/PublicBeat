@@ -32,6 +32,11 @@ class _LyricsViewState extends State<LyricsView> {
     if (oldWidget.lyrics != widget.lyrics) {
       _lyricKeys = List.generate(widget.lyrics.length, (_) => GlobalKey());
       _currentIndex = -1;
+      
+      // Reset scroll posisi ke atas (0) saat lirik berubah (lagu berganti)
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(0);
+      }
     }
     
     // If the player was minimized and is now fully maximized, recenter the active lyric line.
@@ -101,11 +106,26 @@ class _LyricsViewState extends State<LyricsView> {
           newIndex = -1; // Song hasn't reached first line
         }
 
-        if (newIndex != _currentIndex && newIndex >= 0) {
+        if (newIndex != _currentIndex) {
           _currentIndex = newIndex;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _scrollToCurrentLine(_currentIndex);
-          });
+          
+          if (_currentIndex >= 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _scrollToCurrentLine(_currentIndex);
+            });
+          } else {
+            // _currentIndex is -1 (hasn't reached first line)
+            // Remove highlight and scroll back to top
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (_scrollController.hasClients) {
+                _scrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutCubic,
+                );
+              }
+            });
+          }
         }
 
         return GestureDetector(
@@ -132,28 +152,37 @@ class _LyricsViewState extends State<LyricsView> {
               final lyric = widget.lyrics[index];
               final isActive = index == _currentIndex;
 
-              return Padding(
-                key: _lyricKeys[index],
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 400),
-                  curve: Curves.easeOutCubic,
-                  style: TextStyle(
-                    fontSize: isActive ? 28 : 22,
-                    fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
-                    color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
-                    shadows: isActive
-                        ? [
-                            Shadow(
-                              color: Colors.white.withOpacity(0.5),
-                              blurRadius: 16,
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: Text(
-                    lyric.text.isEmpty ? "• • •" : lyric.text,
-                    textAlign: TextAlign.left,
+              return GestureDetector(
+                onTap: () {
+                  // User taps on a lyric line -> seek the audio player to that timestamp
+                  audioProvider.seek(lyric.time);
+                  
+                  // Temporarily disable scrolling block so it snaps to the new lyric
+                  _isUserScrolling = false;
+                },
+                child: Padding(
+                  key: _lyricKeys[index],
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 400),
+                    curve: Curves.easeOutCubic,
+                    style: TextStyle(
+                      fontSize: isActive ? 28 : 22,
+                      fontWeight: isActive ? FontWeight.w900 : FontWeight.w600,
+                      color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
+                      shadows: isActive
+                          ? [
+                              Shadow(
+                                color: Colors.white.withOpacity(0.5),
+                                blurRadius: 16,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      lyric.text.isEmpty ? "• • •" : lyric.text,
+                      textAlign: TextAlign.left,
+                    ),
                   ),
                 ),
               );
