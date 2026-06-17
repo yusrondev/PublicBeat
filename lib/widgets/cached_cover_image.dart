@@ -39,13 +39,26 @@ class CachedCoverImage extends StatelessWidget {
       imageWidget = _fallbackNetworkImage();
     }
 
-    if (borderRadius != null) {
-      return ClipRRect(
-        borderRadius: borderRadius!,
+    final bool needsCrop = fit == BoxFit.cover &&
+        (song.thumbnailUrl.contains('hqdefault') ||
+         song.thumbnailUrl.contains('sddefault') ||
+         song.thumbnailUrl.contains('default.jpg'));
+
+    Widget finalWidget = imageWidget;
+    if (needsCrop) {
+      finalWidget = Transform.scale(
+        scale: 1.35,
         child: imageWidget,
       );
     }
-    return imageWidget;
+
+    if (borderRadius != null) {
+      return ClipRRect(
+        borderRadius: borderRadius!,
+        child: finalWidget,
+      );
+    }
+    return needsCrop ? ClipRect(child: finalWidget) : finalWidget;
   }
 
   Widget _fallbackNetworkImage() {
